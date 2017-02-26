@@ -109,7 +109,11 @@ runs/TRIM-READS/TRIM-READS.sh: $(RFILES) | $(TRIM_DIR)
 	'@'\
 	'trimmomatic PE -phred33 reads/\1_1.fq.gz reads/\1_2.fq.gz '\
 	'-baseout $(TRIM_DIR)/\1.fq.gz '\
-	'ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 LEADING:20 TRAILING:20 SLIDINGWINDOW:4:20 MINLEN:36\n'\
+	'ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 '\
+	'LEADING:20 '\
+	'TRAILING:20 '\
+	'SLIDINGWINDOW:4:20 '\
+	'MINLEN:36\n'\
 	'@g' > $(RUNFILES)/trimmomatic-run.txt #end
 	SLURM_Array -c $(RUNFILES)/trimmomatic-run.txt \
 		-r runs/TRIM-READS \
