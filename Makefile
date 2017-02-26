@@ -52,6 +52,7 @@ PREFIX   := Ssc_mito # prefix for the bowtie2 index
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
 RFILES   := $(addsuffix _1.fq.gz, $(READS))
 TR_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
+TR_PRE   := $(patsubst reads/%,$(TRIM_DIR)/%, $(READS))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bz2 .2.bz2 .3.bz2 .4.bz2 .rev.1.bz2 .rev.2.bz2)
 SAM      := $(patsubst reads/%.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
 SAM_VAL  := $(patsubst %.sam, %_stats.txt.gz, $(SAM))
@@ -126,7 +127,7 @@ runs/TRIM-READS/TRIM-READS.sh: $(RFILES) | $(TRIM_DIR)
 $(TR_READS) : $(RFILES) runs/TRIM-READS/TRIM-READS.sh
 
 runs/MAP-READS/MAP-READS.sh: scripts/make-alignment.sh $(TR_READS) | $(SAM_DIR) 
-	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(patsubst reads/,$(TRIM_DIR), $(READS))
+	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(TR_PRE)
 	SLURM_Array -c $(RUNFILES)/make-alignment.txt \
 		--mail $(EMAIL) \
 		-r runs/MAP-READS \
