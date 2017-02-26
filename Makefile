@@ -51,6 +51,7 @@ INTERVALS:= $(patsubst %.fasta,%.intervals.txt, $(REF_FNA))
 PREFIX   := Ssc_mito # prefix for the bowtie2 index
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
 RFILES   := $(addsuffix _1.fq.gz, $(READS))
+TR_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bz2 .2.bz2 .3.bz2 .4.bz2 .rev.1.bz2 .rev.2.bz2)
 SAM      := $(patsubst reads/%.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
 SAM_VAL  := $(patsubst %.sam, %_stats.txt.gz, $(SAM))
@@ -79,7 +80,8 @@ MANIFEST := $(foreach x,$(patsubst reads/%,%, $(READS)),$(call joiner,$(x)))
 $(RUNFILES) $(IDX_DIR) $(SAM_DIR) $(BAM_DIR) $(REF_DIR) $(GVCF_DIR) $(TRIM_DIR):
 	-mkdir $@
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
-map : index $(SAM) $(SAM_VAL) 
+trim : index $(TR_READS)
+map : trim $(SAM) $(SAM_VAL) 
 bam : map $(BAM) $(FIXED) $(BAM_VAL) 
 dup : bam $(DUPMRK) $(DUP_VAL)
 vcf : dup $(REF_IDX) $(GVCF) $(VCF)
@@ -114,15 +116,17 @@ runs/TRIM-READS/TRIM-READS.sh: $(RFILES) | $(TRIM_DIR)
 	'TRAILING:20 '\
 	'SLIDINGWINDOW:4:20 '\
 	'MINLEN:36\n'\
-	'@g' > $(RUNFILES)/trimmomatic-run.txt #end
-	SLURM_Array -c $(RUNFILES)/trimmomatic-run.txt \
+	'@g' > $(RUNFILES)/trim-reads.txt #end
+	SLURM_Array -c $(RUNFILES)/trim-reads.txt \
 		-r runs/TRIM-READS \
 		-l trimmomatic/0.36 \
 		--hold \
 		-w $(ROOT_DIR)
 
-runs/MAP-READS/MAP-READS.sh: scripts/make-alignment.sh $(RFILES) | $(SAM_DIR) 
-	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) $(READS)
+$(TR_READS) : $(RFILES) runs/TRIM-READS/TRIM-READS.sh
+
+runs/MAP-READS/MAP-READS.sh: scripts/make-alignment.sh $(TR_READS) | $(SAM_DIR) 
+	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(patsubst reads/,$(TRIM_DIR), $(READS))
 	SLURM_Array -c $(RUNFILES)/make-alignment.txt \
 		--mail $(EMAIL) \
 		-r runs/MAP-READS \
@@ -420,6 +424,7 @@ help :
 	@echo "GENOME    : " $(FASTA)
 	@echo "RUNFILES  : " $(RUNFILES)
 	@echo "READS     : " $(READS)
+	@echo "TRIMMED READS     : " $(TR_READS)
 	@echo
 
 manifest :
@@ -443,4 +448,4 @@ burn:
 
 
 
-.PHONY: all index help map bam dup vcf clean burn manifest
+.PHONY: all index help trim map bam dup vcf clean burn manifest
