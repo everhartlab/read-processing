@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# -lt 3 ]; then
+if [ $# -lt 4 ]; then
         echo
         echo "Align samples to indexed genome output."
         echo
@@ -13,7 +13,7 @@ if [ $# -lt 3 ]; then
         echo
         echo "	<bt2-idx>  - basename of reference (with path)"
         echo "	<dir>      - directory in which to place the SAM files"
-	echo "	<suffix>   - suffix for the reads (e.g.: .fq.gz)
+	echo "	<suffix>   - suffix for the reads (e.g.: .fq.gz)"
 	echo "	SAMPLES... - list of basenames for samples"
         echo
         exit
