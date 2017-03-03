@@ -26,31 +26,40 @@
 all: $(FASTA) $(RFILES) vcf 
 
 
-EMAIL    := $$EMAIL # Set this environmental variable or change it here
+# Define genome directory. YOU MUST CREATE THIS DIRECTORY
+FAST_DIR := mitochondria_genome
+FASTA    := $(FAST_DIR)/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.fasta.gz
+
+# Reads. Make sure your PE reads end with _1.fq.gz
+RFILES   := $(addsuffix _1.fq.gz, $(READS))
+READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
+
+# Define Directory names
+TMP      := \$$TMPDIR
 ROOT_DIR := $(shell echo $$WORK/$$(basename $$(pwd))) 
 ROOT_DIR := $(strip $(ROOT_DIR))
-TMP      := \$$TMPDIR
+RUNFILES := runfiles
 IDX_DIR  := bt2-index
+PREFIX   := Ssc_mito # prefix for the bowtie2 index
+TRIM_DIR := TRIM
+SAM_DIR  := SAMS
+BAM_DIR  := BAMS
+GVCF_DIR := GVCF
+REF_DIR  := REF
+
+# Modules and environmental variables
 BOWTIE   := bowtie/2.2
 SAMTOOLS := samtools/1.3
 PICARD   := picard/1.1
 GATK     := gatk/3.4
 gatk     := \$$GATK
 PIC      := \$$PICARD
-TRIM_DIR := TRIM
-SAM_DIR  := SAMS
-BAM_DIR  := BAMS
-GVCF_DIR := GVCF
-REF_DIR  := REF
-RUNFILES := runfiles
-FAST_DIR := mitochondria_genome
-FASTA    := $(FAST_DIR)/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.fasta.gz
+EMAIL    := $$EMAIL # Note: this gets interpreted here, so be sure to define this in the $EMAIL envvar or here
+
+# Accounting for the expected output files
 REF_FNA  := $(patsubst $(FAST_DIR)/%.fasta.gz,$(REF_DIR)/%.fasta, $(FASTA))
 REF_IDX  := $(patsubst %.fasta,%.dict, $(REF_FNA))
 INTERVALS:= $(patsubst %.fasta,%.intervals.txt, $(REF_FNA))
-PREFIX   := Ssc_mito # prefix for the bowtie2 index
-READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
-RFILES   := $(addsuffix _1.fq.gz, $(READS))
 TR_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
 TR_PRE   := $(patsubst reads/%,$(TRIM_DIR)/%, $(READS))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bz2 .2.bz2 .3.bz2 .4.bz2 .rev.1.bz2 .rev.2.bz2)
