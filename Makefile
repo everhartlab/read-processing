@@ -103,7 +103,7 @@ $(REF_DIR)/%.fasta : $(FAST_DIR)/%.fasta.gz | $(REF_DIR) $(RUNFILES)
 	
 # Creates intervals for the final step. Edit the -w parameter to change.
 $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
-	./scripts/make-GATK-intervals.py -f $< -w 10000 -o $@
+	./scripts/make-GATK-intervals.py -f $< -w 10000 > $@
 
 runs/BOWTIE2-BUILD/BOWTIE2-BUILD.sh : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
 	$^ $(addprefix $(IDX_DIR)/, $(PREFIX)) 
