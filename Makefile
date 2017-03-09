@@ -70,6 +70,7 @@ FIXED    := $(patsubst %_nsort, %_fixed.bam, $(BAM))
 DUPMRK   := $(patsubst %_nsort, %_dupmrk.bam, $(BAM))
 GVCF     := $(patsubst reads/%,$(GVCF_DIR)/%.g.vcf.gz, $(READS))
 DUP_VAL  := $(patsubst %_nsort, %_dupmrk_stats.txt.gz, $(BAM))
+PLOT_VAL := $(patsubst %_nsort, %/, $(BAM))
 BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
 
@@ -94,6 +95,7 @@ trim : index $(TR_READS)
 map : trim $(SAM) $(SAM_VAL) 
 bam : map $(BAM) $(FIXED) $(BAM_VAL) 
 dup : bam $(DUPMRK) $(DUP_VAL)
+plot : $(PLOT_VAL)
 vcf : dup $(REF_IDX) $(GVCF) $(VCF)
 concat : runs/CONCAT-VCF/CONCAT-VCF.sh
 
@@ -275,6 +277,21 @@ runs/VALIDATE-DUPS/VALIDATE-DUPS.sh: $(DUPMRK)
 
 $(DUP_VAL): $(DUPMRK) runs/VALIDATE-DUPS/VALIDATE-DUPS.sh
 
+runs/PLOT-VALS/PLOT-VALS.sh: $(DUP_VAL)
+	echo $^ | \
+	sed -r 's@'\
+	'([^ ]+?)_dupmrk_stats.txt.gz *'\
+	'@'\
+	'mkdir \1; '\
+	'plot-bamstats -p \1/ <(zcat \1_dupmrk_stats.txt.gz)\n'\
+	'@g' > $(RUNFILES)/plot-vals.txt
+	SLURM_Array -c $(RUNFILES)/plot-vals.txt \
+		-r runs/PLOT-VALS \
+		-l $(SAMTOOLS) \
+		--hold \
+		-w $(ROOT_DIR)
+
+$(PLOT_VAL): $(DUP_VAL) runs/PLOT-VALS/PLOT-VALS.sh
 
 # https://www.broadinstitute.org/gatk/documentation/article?id=3893
 # # https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php
