@@ -94,7 +94,7 @@ index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX)
 trim : index $(TR_READS)
 map : trim $(SAM) $(SAM_VAL) 
 bam : map $(BAM) $(FIXED) $(BAM_VAL) 
-dup : bam $(DUPMRK) $(DUP_VAL)
+dup : bam $(DUPMRK) $(DUP_VAL) $(BAM_DIR)/depth_stats.txt.gz
 plot : $(PLOT_VAL)
 vcf : dup $(REF_IDX) $(GVCF) $(VCF)
 concat : runs/CONCAT-VCF/CONCAT-VCF.sh
@@ -259,6 +259,17 @@ runs/MARK-DUPS/MARK-DUPS.sh: $(FIXED)
 		-w $(ROOT_DIR)
 
 $(DUPMRK) : $(FIXED) runs/MARK-DUPS/MARK-DUPS.sh
+
+runs/GET-DEPTH/GET-DEPTH.sh: $(DUPMRK)
+	echo 'samtools depth $^ | gzip -c > $(BAM_DIR)/depth_stats.txt.gz' > $(RUNFILES)/get-depth.txt # end
+	SLURM_Array -c $(RUNFILES)/get-depth.txt \
+		--mail $(EMAIL) \
+		-r runs/GET-DEPTH \
+		-l $(SAMTOOLS) \
+		--hold \
+		-w $(ROOT_DIR)	
+
+$(BAM_DIR)/depth_stats.txt.gz : $(DUPRMK) runs/GET-DEPTH/GET-DEPTH.sh
 
 runs/VALIDATE-DUPS/VALIDATE-DUPS.sh: $(DUPMRK)
 	echo $^ | \
