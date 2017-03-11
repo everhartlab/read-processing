@@ -28,7 +28,7 @@ def make_chromosomes(fasta):
 def parse_input():
 	parser = argparse.ArgumentParser(description = "Reads in a FASTA formatted file and returns a list of windows per chromosome for use with the GATK --intervals option")
 	parser.add_argument("-f", "--fasta", required = False, dest = "fasta", default = "-", help = "a fasta formatted file (default: stdin)")
-	parser.add_argument("-w", "--window", required = False, dest = "window", default = 100, type = int, help = "window size in bp (default: 100)")
+	parser.add_argument("-w", "--window", required = False, dest = "window", default = 100, type = int, help = "window size in bp (default: 100). Set to 0 to print chromosome length")
 	parser.add_argument("-o", "--outfile", required = False, dest = "outfile", default = None, help = "a file to print the windows (default: stdout)")
 	args = parser.parse_args()
 	
@@ -90,5 +90,8 @@ class Chromosome:
 args = parse_input()
 chroms = make_chromosomes(args.fasta)
 for chrom in chroms:
-	chrom.make_windows(args.window)
-	chrom.print_windows(args.outfile)
+	if args.window > 0:
+		chrom.make_windows(args.window)
+		chrom.print_windows(args.outfile)
+	else:
+		print(chrom.get_name() + "\t" + str(chrom.get_length()))
