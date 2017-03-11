@@ -60,6 +60,7 @@ EMAIL    := $$EMAIL # Note: this gets interpreted here, so be sure to define thi
 REF_FNA  := $(patsubst $(FAST_DIR)/%.fasta.gz,$(REF_DIR)/%.fasta, $(FASTA))
 REF_IDX  := $(patsubst %.fasta,%.dict, $(REF_FNA))
 INTERVALS:= $(patsubst %.fasta,%.intervals.txt, $(REF_FNA))
+REFSIZES := $(patsubst %.fasta,%.sizes.txt, $(REF_FNA))
 TR_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
 TR_PRE   := $(patsubst reads/%,$(TRIM_DIR)/%, $(READS))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bz2 .2.bz2 .3.bz2 .4.bz2 .rev.1.bz2 .rev.2.bz2)
@@ -106,6 +107,9 @@ $(REF_DIR)/%.fasta : $(FAST_DIR)/%.fasta.gz | $(REF_DIR) $(RUNFILES)
 # Creates intervals for the final step. Edit the -w parameter to change.
 $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
 	./scripts/make-GATK-intervals.py -f $< -w 10000 > $@
+
+$(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
+	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
 
 runs/BOWTIE2-BUILD/BOWTIE2-BUILD.sh : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
 	$^ $(addprefix $(IDX_DIR)/, $(PREFIX)) 
