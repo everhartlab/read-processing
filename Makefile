@@ -52,6 +52,8 @@ REF_DIR  := REF
 RUNS     := runs
 BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
 TRM_RUN  := $(RUNS)/TRIM-READS
+MAP_RUN  := $(RUNS)/MAP-READS
+
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -107,7 +109,8 @@ $(TRIM_DIR):
 	-mkdir $@
 
 $(BT2_RUN) \
-$(TRM_RUN): $(RUNS)
+$(TRM_RUN) \
+$(MAP_RUN): $(RUNS)
 	-mkdir $@
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
@@ -148,16 +151,24 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-e $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).err \
 	scripts/trim-reads.sh $(patsubst reads/%_1.fq.gz,%,$<) $(TRIM_DIR)
 
-runs/MAP-READS/MAP-READS.sh: scripts/make-alignment.sh $(TR_READS) | $(SAM_DIR) 
-	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(TR_PRE)
-	SLURM_Array -c $(RUNFILES)/make-alignment.txt \
-		--mail $(EMAIL) \
-		-r runs/MAP-READS \
-		-l $(BOWTIE) \
-		--hold \
-		-w $(ROOT_DIR)
-
-$(SAM) : scripts/make-alignment.sh $(RFILES) runs/MAP-READS/MAP-READS.sh
+$(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh | $(SAM_DIR) $(MAP_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAP-READS \
+	-o $(MAP_RUN)/$(patsubst $(TRIM_DIR)/%_1P.fq.gz,%,$<).out \
+	-e $(MAP_RUN)/$(patsubst $(TRIM_DIR)/%_1P.fq.gz,%,$<).err \
+	scripts/make-alignment.sh \
+	$(addprefix $(IDX_DIR)/, $(PREFIX)) \
+	$(SAM_DIR) \
+	P.fq.gz \
+	$(patsubst %_1P.fq.gz,%,$<)
+	# $< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(TR_PRE)
+	# SLURM_Array -c $(RUNFILES)/make-alignment.txt \
+	# 	--mail $(EMAIL) \
+	# 	-r runs/MAP-READS \
+	# 	-l $(BOWTIE) \
+	# 	--hold \
+	# 	-w $(ROOT_DIR)
 
 
 runs/VALIDATE-SAM/VALIDATE-SAM.sh: $(SAM) | $(SAM_DIR) 
