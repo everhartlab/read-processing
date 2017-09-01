@@ -57,7 +57,7 @@ fi
 TIME='/usr/bin/env time -f " \\tFull Command:                      %C \\n\\tMemory (kb):                       %M \\n\\t# SWAP  (freq):                    %W \\n\\t# Waits (freq):                    %w \\n\\tCPU (percent):                     %P \\n\\tTime (seconds):                    %e \\n\\tTime (hh:mm:ss.ms):                %E \\n\\tSystem CPU Time (seconds):         %S \\n\\tUser   CPU Time (seconds):         %U " '
 
 # Write details to stdout
-echo "  Job: $SLURM_ARRAY_JOB_ID"
+echo "  Job: $SLURM_JOB_ID"
 echo
 echo "  Started on:           " `/bin/hostname -s`
 echo "  Started at:           " `/bin/date`
@@ -65,7 +65,7 @@ echo $CMD
 
 # Writing to a jobfile before the command is executed allows for a hack to make
 # a target for the Makefile that is older than the multiple files for output.
-cat "$SLURM_ARRAY_JOB_ID" > $JOBFILE
+cat "$SLURM_JOB_ID" > $JOBFILE
 
 eval $TIME$CMD # Running the command.
 
