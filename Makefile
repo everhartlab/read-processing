@@ -111,8 +111,8 @@ $(TRM_RUN): $(RUNS)
 	-mkdir $@
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
-trim : index $(TR_READS)
-map : trim $(SAM) $(SAM_VAL) 
+trim : $(TR_READS)
+map : index trim $(SAM) $(SAM_VAL) 
 bam : map $(BAM) $(FIXED) $(BAM_VAL) 
 dup : bam $(DUPMRK) $(DUP_VAL) runs/GET-DEPTH/GET-DEPTH.sh
 plot : $(PLOT_VAL)
@@ -146,26 +146,7 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-J TRIM-READS \
 	-o $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).out \
 	-e $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).err \
-	scripts/trim-reads.sh $(patsubst %_1.fq.gz,%,$<) $(TRIM_DIR)
-	# echo $(READS) | \
-	# sed -r 's@'\
-	# 'reads/([^ ]+?) *'\
-	# '@'\
-	# 'trimmomatic PE -phred33 reads/\1_1.fq.gz reads/\1_2.fq.gz '\
-	# '-baseout $(TRIM_DIR)/\1.fq.gz '\
-	# 'ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 '\
-	# 'LEADING:28 '\
-	# 'TRAILING:28 '\
-	# 'SLIDINGWINDOW:4:28 '\
-	# 'MINLEN:36\n'\
-	# '@g' > $(RUNFILES)/trim-reads.txt #end
-	# SLURM_Array -c $(RUNFILES)/trim-reads.txt \
-	# 	-r runs/TRIM-READS \
-	# 	-l trimmomatic/0.36 \
-	# 	--hold \
-	# 	-w $(ROOT_DIR)
-
-# $(TR_READS) : $(RFILES) runs/TRIM-READS/TRIM-READS.sh
+	scripts/trim-reads.sh $(patsubst reads/%_1.fq.gz,%,$<) $(TRIM_DIR)
 
 runs/MAP-READS/MAP-READS.sh: scripts/make-alignment.sh $(TR_READS) | $(SAM_DIR) 
 	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(TR_PRE)
