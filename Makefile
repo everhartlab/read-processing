@@ -133,6 +133,7 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
 	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
 
+# Indexing the genome for Bowtie2 ---------------------------------------------
 $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
@@ -143,6 +144,7 @@ $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
+# Quality trimming the reads --------------------------------------------------
 $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TRM_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
@@ -151,6 +153,7 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-e $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).err \
 	scripts/trim-reads.sh $(patsubst reads/%_1.fq.gz,%,$<) $(TRIM_DIR)
 
+# Mapping the reads -----------------------------------------------------------
 $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh | $(SAM_DIR) $(MAP_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
@@ -162,14 +165,6 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh | $(SAM_DIR)
 	$(SAM_DIR) \
 	P.fq.gz \
 	$(patsubst %_1P.fq.gz,%,$<)
-	# $< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(TR_PRE)
-	# SLURM_Array -c $(RUNFILES)/make-alignment.txt \
-	# 	--mail $(EMAIL) \
-	# 	-r runs/MAP-READS \
-	# 	-l $(BOWTIE) \
-	# 	--hold \
-	# 	-w $(ROOT_DIR)
-
 
 runs/VALIDATE-SAM/VALIDATE-SAM.sh: $(SAM) | $(SAM_DIR) 
 	echo $^ | \
