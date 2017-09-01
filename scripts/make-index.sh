@@ -18,7 +18,7 @@
 # 
 module load bowtie/2.2
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
 	echo 
 	echo "Create index for bowtie2"
 	echo
@@ -27,16 +27,18 @@ if [ $# -lt 2 ]; then
 	echo
 	echo "Usage:"
 	echo
-	echo "	bash make-index.sh <input_reference.fasta> <index_prefix>" 
+	echo "	bash make-index.sh <input_reference.fasta> <index_prefix> <jobfile>" 
 	echo
 	echo "	<input_reference.fasta> - fasta or gzipped fasta file"
 	echo "	<index_prefix> - prefix for the output files"
+	echo "	<jobfile> - output for dummy file"
 	echo
 	exit
 fi
 
 INPUT_REF=$1
 INDEX_PREFIX=$2
+JOBFILE=$3
 CMD="bowtie2-build --seed 99"
 
 
@@ -65,4 +67,5 @@ eval $TIME$CMD # Running the command.
 
 echo "  Finished at:           " `date`
 echo
+cat "$SLURM_ARRAY_JOB_ID" > $JOBFILE
 # End of file
