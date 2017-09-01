@@ -3,6 +3,9 @@
 # Set job time
 #SBATCH --time=04:00:00
 #
+# Set array job range (0 to number of commands in cmd file (minus 1)) and concurrency (%N)
+#SBATCH --array=0-0%1000
+#
 # Set memory requested and max memory
 #SBATCH --mem=4gb
 #
@@ -15,39 +18,27 @@
 #
 # -----------------------------------------------------------------------------
 #
-# 
-module load bowtie/2.2
-
+#
 if [ $# -lt 2 ]; then
-	echo 
-	echo "Create index for bowtie2"
+	echo
+	echo "Run a file"
 	echo
 	echo
-	echo "All arguments for this script are the arguments for bowtie2-index"
+	echo "This script takes a file in and copies it to out"
 	echo
 	echo "Usage:"
 	echo
-	echo "	bash make-index.sh <input_reference.fasta> <index_prefix>" 
-	echo
-	echo "	<input_reference.fasta> - fasta or gzipped fasta file"
-	echo "	<index_prefix> - prefix for the output files"
+	echo "	sbatch -J JOBNAME \\"
+	echo "	       -o PATH/TO/outfile.out \\"
+	echo "	       -e PATH/TO/errorfile.err \\"
+	echo "	       run.sh <in> <out>"
 	echo
 	exit
 fi
 
-INPUT_REF=$1
-INDEX_PREFIX=$2
-CMD="bowtie2-build --seed 99"
-
-
-if [[ $INPUT_REF == *gz ]]; then
-	WRITE_TMP="zcat $INPUT_REF > \$TMPDIR/tmp.fa"
-	CMD="$WRITE_TMP; $CMD \$TMPDIR/tmp.fa $INDEX_PREFIX"
-else 
-	CMD="$CMD $INPUT_REF $INDEX_PREFIX"
-fi
-
-# printf "$CMD\n" > runfiles/make-index.txt
+IN=$1
+OUT=$2
+CMD="cp $IN $OUT"
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
