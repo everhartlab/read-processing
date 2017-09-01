@@ -111,14 +111,19 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
 	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
 
-runs/BOWTIE2-BUILD/BOWTIE2-BUILD.sh : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
+$(IDX) : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
+	sbatch \
+	-D $(ROOD_DIR) \
+	-J BOWTIE2-BUILD \
+	-o runs/BOWTIE2-BUILD.out \
+	-e runs/BOWTIE2-BUILD.err \
 	$^ $(addprefix $(IDX_DIR)/, $(PREFIX)) 
-	SLURM_Array -c $(RUNFILES)/make-index.txt \
-		-r runs/BOWTIE2-BUILD \
-		-l $(BOWTIE) \
-		-w $(ROOT_DIR)
+	# SLURM_Array -c $(RUNFILES)/make-index.txt \
+	# 	-r runs/BOWTIE2-BUILD \
+	# 	-l $(BOWTIE) \
+	# 	-w $(ROOT_DIR)
 
-$(IDX) : scripts/make-index.sh $(FASTA) runs/BOWTIE2-BUILD/BOWTIE2-BUILD.sh
+# $(IDX) : scripts/make-index.sh $(FASTA) runs/BOWTIE2-BUILD/BOWTIE2-BUILD.sh
 
 runs/TRIM-READS/TRIM-READS.sh: $(RFILES) | $(TRIM_DIR)
 	echo $(READS) | \
