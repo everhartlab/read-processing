@@ -135,10 +135,6 @@ $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
 	$^ $(addprefix $(IDX_DIR)/, $(PREFIX)) $@
-	# SLURM_Array -c $(RUNFILES)/make-index.txt \
-	# 	-r runs/BOWTIE2-BUILD \
-	# 	-l $(BOWTIE) \
-	# 	-w $(ROOT_DIR)
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
