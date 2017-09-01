@@ -3,8 +3,6 @@
 # Set job time
 #SBATCH --time=04:00:00
 #
-# Set array job range (0 to number of commands in cmd file (minus 1)) and concurrency (%N)
-#SBATCH --array=0-0%1000
 #
 # Set memory requested and max memory
 #SBATCH --mem=4gb
@@ -46,7 +44,7 @@ CMD="cp $IN $OUT"
 TIME='/usr/bin/env time -f " \\tFull Command:                      %C \\n\\tMemory (kb):                       %M \\n\\t# SWAP  (freq):                    %W \\n\\t# Waits (freq):                    %w \\n\\tCPU (percent):                     %P \\n\\tTime (seconds):                    %e \\n\\tTime (hh:mm:ss.ms):                %E \\n\\tSystem CPU Time (seconds):         %S \\n\\tUser   CPU Time (seconds):         %U " '
 
 # Write details to stdout
-echo "  Job: $SLURM_ARRAY_JOB_ID"
+echo "  Job: $SLURM_JOB_ID"
 echo
 echo "  Started on:           " `/bin/hostname -s`
 echo "  Started at:           " `/bin/date`
