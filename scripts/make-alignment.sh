@@ -77,7 +77,7 @@ echo $CMD
 # a target for the Makefile that is older than the multiple files for output.
 # printf "$SLURM_JOB_ID\n" > $JOBFILE
 
-eval "$TIME$MKFIFO; $TIME$WFIFO $CMD$BASE.sam $ARGS $RGID $RG" # Running the command.
+eval $CMD
 
 echo "  Finished at:           " `date`
 echo
