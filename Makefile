@@ -36,7 +36,7 @@ READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
 
 # Define Directory names
 TMP      := \$$TMPDIR
-ROOT_DIR := $(shell echo $$WORK/$$(basename $$(pwd))) 
+ROOT_DIR := $(patsubst /lustre/%,/%,$(CURDIR)) 
 ROOT_DIR := $(strip $(ROOT_DIR))
 RUNFILES := runfiles
 IDX_DIR  := bt2-index
