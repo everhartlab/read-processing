@@ -111,7 +111,7 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
 	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
 
-$(IDX) : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
+$(IDX) : scripts/make-index.sh $@ $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
 	sbatch \
 	-D $(ROOD_DIR) \
 	-J BOWTIE2-BUILD \
