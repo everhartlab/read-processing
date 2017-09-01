@@ -31,7 +31,7 @@ if [ $# -lt 2 ]; then
 	echo "	sbatch -J JOBNAME \\"
 	echo "	       -o PATH/TO/outfile.out \\"
 	echo "	       -e PATH/TO/errorfile.err \\"
-	echo "	       run.sh <in> <out>"
+	echo "	       run.sh <in> <out>
 	echo
 	exit
 fi
