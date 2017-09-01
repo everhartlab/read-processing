@@ -1,4 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Set job time
+#SBATCH --time=04:00:00
+#
+# Set memory requested and max memory
+#SBATCH --mem=4gb
+#
+# Request some processors
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#
+
+module load bowtie/2.2
 
 if [ $# -lt 4 ]; then
         echo
@@ -13,8 +26,8 @@ if [ $# -lt 4 ]; then
         echo
         echo "	<bt2-idx>  - basename of reference (with path)"
         echo "	<dir>      - directory in which to place the SAM files"
-	echo "	<suffix>   - suffix for the reads (e.g.: .fq.gz)"
-	echo "	SAMPLES... - list of basenames for samples"
+		echo "	<suffix>   - suffix for the reads (e.g.: .fq.gz)"
+		echo "	SAMPLES... - list of basenames for samples"
         echo
         exit
 fi
@@ -28,7 +41,7 @@ SAMPLES="${@:4}"
 CMD="bowtie2 -x $IDX -S $DIR/"
 
 
-printf "" > runfiles/make-alignment.txt
+# printf "" > runfiles/make-alignment.txt
 
 tmp=($SAMPLES)
 tmp=${tmp[0]}"_1$SUF"
@@ -52,5 +65,5 @@ for s in $SAMPLES; do
 	RGID="--rg-id ${INFO[2]}.${INFO[3]}"
 	RG="--rg SM:$BASE --rg PL:ILLUMINA --rg LB:RUN.${INFO[1]}"
 
-	printf "$MKFIFO; $WFIFO $CMD$BASE.sam $ARGS $RGID $RG\n" >> runfiles/make-alignment.txt
+	CMD="$MKFIFO; $WFIFO $CMD$BASE.sam $ARGS $RGID $RG"
 done
