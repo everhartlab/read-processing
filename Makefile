@@ -140,13 +140,13 @@ $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
-$(TRIM_DIR)/%_1P.fq.gz: scripts/trim-reads.sh %_1.fq.gz | $(TRIM_DIR)
+$(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J TRIM-READS \
 	-o $(TRM_RUN)/TRIM-READS.out \
 	-e $(TRM_RUN)/TRIM-READS.err \
-	$^ $(TRIM_DIR)
+	scripts/trim-reads.sh $< $(TRIM_DIR)
 	# echo $(READS) | \
 	# sed -r 's@'\
 	# 'reads/([^ ]+?) *'\
@@ -165,7 +165,7 @@ $(TRIM_DIR)/%_1P.fq.gz: scripts/trim-reads.sh %_1.fq.gz | $(TRIM_DIR)
 	# 	--hold \
 	# 	-w $(ROOT_DIR)
 
-$(TR_READS) : $(RFILES) runs/TRIM-READS/TRIM-READS.sh
+# $(TR_READS) : $(RFILES) runs/TRIM-READS/TRIM-READS.sh
 
 runs/MAP-READS/MAP-READS.sh: scripts/make-alignment.sh $(TR_READS) | $(SAM_DIR) 
 	$< $(addprefix $(IDX_DIR)/, $(PREFIX)) $(SAM_DIR) P.fq.gz $(TR_PRE)
