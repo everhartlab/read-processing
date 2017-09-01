@@ -130,7 +130,7 @@ $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
 
 $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
 	sbatch \
-	-D $(ROOD_DIR) \
+	-D $(ROOT_DIR) \
 	-J BOWTIE2-BUILD \
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
