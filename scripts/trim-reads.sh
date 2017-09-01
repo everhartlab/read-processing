@@ -10,11 +10,6 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
 #
-# -----------------------------------------------------------------------------
-# 	This file makes a copy of one file to another on a SLURM Array.
-#
-# -----------------------------------------------------------------------------
-#
 # 
 module load trimmomatic/0.36
 
