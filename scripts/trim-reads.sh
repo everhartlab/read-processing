@@ -18,7 +18,7 @@
 # 
 module load trimmomatic/0.36
 
-if [ $# -lt 2]; then
+if [ $# -lt 2 ]; then
 	echo 
 	echo "Trim reads with trimmomatic"
 	echo
@@ -28,9 +28,9 @@ if [ $# -lt 2]; then
 	echo
 	echo "Usage:"
 	echo
-	echo "	bash trim-reads.sh <readpair_1.fq.gz> <trim_dir>" 
+	echo "	bash trim-reads.sh <readpair> <trim_dir>" 
 	echo
-	echo "	<readpair_1.fq.gz> - gzipped fasta file that has a pair"
+	echo "	<readpair> - prefix to pair of gzipped fasta files"
 	echo "	<trim_dir> - the directory to store the outupt"
 	echo
 	echo "Output consists of four files in the trim_dir:"
@@ -42,15 +42,15 @@ if [ $# -lt 2]; then
 	exit
 fi
 
-READ_PREFIX=$(sed 's/_1.fq.gz//' <<< $1)
+READ_PREFIX=$1
 TRIM_DIR=$2
 
-CMD="trimmomatic PE -phred33 reads/${READ_PREFIX}_1.fq.gz reads/${READ_PREFIX}_2.fq.gz"
-CMD=$CMD" -baseout ${TRIM_DIR}/\1.fq.gz '"
+CMD="trimmomatic PE -phred33 ${READ_PREFIX}_1.fq.gz ${READ_PREFIX}_2.fq.gz"
+CMD=$CMD" -baseout ${TRIM_DIR}/\1.fq.gz"
 CMD=$CMD" ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10"
 CMD=$CMD" LEADING:28"
 CMD=$CMD" TRAILING:28"
-CMD=$CMD" SLIDINGWINDOW:4:28 '"
+CMD=$CMD" SLIDINGWINDOW:4:28"
 CMD=$CMD" MINLEN:36"
 
 # Run the command through time with memory and such reporting.

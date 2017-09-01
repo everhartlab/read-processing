@@ -140,13 +140,13 @@ $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
-$(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR)
+$(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TRM_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J TRIM-READS \
-	-o $(TRM_RUN)/TRIM-READS.out \
-	-e $(TRM_RUN)/TRIM-READS.err \
-	scripts/trim-reads.sh $< $(TRIM_DIR)
+	-o $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).out \
+	-e $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).err \
+	scripts/trim-reads.sh $(patsubst %_1.fq.gz,%,$<) $(TRIM_DIR)
 	# echo $(READS) | \
 	# sed -r 's@'\
 	# 'reads/([^ ]+?) *'\
