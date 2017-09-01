@@ -31,8 +31,8 @@ FAST_DIR := mitochondria_genome
 FASTA    := $(FAST_DIR)/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.fasta.gz
 
 # Reads. Make sure your PE reads end with _1.fq.gz
-RFILES   := $(addsuffix _1.fq.gz, $(READS))
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
+RFILES   := $(addsuffix _1.fq.gz, $(READS))
 
 # Define Directory names
 TMP      := \$$TMPDIR
@@ -51,6 +51,7 @@ REF_DIR  := REF
 
 RUNS     := runs
 BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
+TRM_RUN  := $(RUNS)/TRIM-READS
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -105,7 +106,8 @@ $(GVCF_DIR) \
 $(TRIM_DIR):
 	-mkdir $@
 
-$(BT2_RUN) : $(RUNS)
+$(BT2_RUN) \
+$(TRM_RUN): $(RUNS)
 	-mkdir $@
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
@@ -138,24 +140,30 @@ $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
-runs/TRIM-READS/TRIM-READS.sh: $(RFILES) | $(TRIM_DIR)
-	echo $(READS) | \
-	sed -r 's@'\
-	'reads/([^ ]+?) *'\
-	'@'\
-	'trimmomatic PE -phred33 reads/\1_1.fq.gz reads/\1_2.fq.gz '\
-	'-baseout $(TRIM_DIR)/\1.fq.gz '\
-	'ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 '\
-	'LEADING:28 '\
-	'TRAILING:28 '\
-	'SLIDINGWINDOW:4:28 '\
-	'MINLEN:36\n'\
-	'@g' > $(RUNFILES)/trim-reads.txt #end
-	SLURM_Array -c $(RUNFILES)/trim-reads.txt \
-		-r runs/TRIM-READS \
-		-l trimmomatic/0.36 \
-		--hold \
-		-w $(ROOT_DIR)
+$(TRIM_DIR)/%_1P.fq.gz: scripts/trim-reads.sh %_1.fq.gz | $(TRIM_DIR)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J TRIM-READS \
+	-o $(TRM_RUN)/TRIM-READS.out \
+	-e $(TRM_RUN)/TRIM-READS.err \
+	$^ $(TRIM_DIR)
+	# echo $(READS) | \
+	# sed -r 's@'\
+	# 'reads/([^ ]+?) *'\
+	# '@'\
+	# 'trimmomatic PE -phred33 reads/\1_1.fq.gz reads/\1_2.fq.gz '\
+	# '-baseout $(TRIM_DIR)/\1.fq.gz '\
+	# 'ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 '\
+	# 'LEADING:28 '\
+	# 'TRAILING:28 '\
+	# 'SLIDINGWINDOW:4:28 '\
+	# 'MINLEN:36\n'\
+	# '@g' > $(RUNFILES)/trim-reads.txt #end
+	# SLURM_Array -c $(RUNFILES)/trim-reads.txt \
+	# 	-r runs/TRIM-READS \
+	# 	-l trimmomatic/0.36 \
+	# 	--hold \
+	# 	-w $(ROOT_DIR)
 
 $(TR_READS) : $(RFILES) runs/TRIM-READS/TRIM-READS.sh
 
