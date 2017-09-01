@@ -47,6 +47,11 @@ BAM_DIR  := BAMS
 GVCF_DIR := GVCF
 REF_DIR  := REF
 
+# Define run directories
+
+RUNS     := runs
+BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
+
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
 SAMTOOLS := samtools/1.3
@@ -88,10 +93,15 @@ joiner = reads/$(1)_1.fq.gz,\
 
 MANIFEST := $(foreach x,$(patsubst reads/%,%, $(READS)),$(call joiner,$(x)))
 
-
+$(RUNS) \
+$(BT2_RUN) \
 $(RUNFILES) \
 $(IDX_DIR) \
-$(SAM_DIR) $(BAM_DIR) $(REF_DIR) $(GVCF_DIR) $(TRIM_DIR):
+$(SAM_DIR) \
+$(BAM_DIR) \
+$(REF_DIR) \
+$(GVCF_DIR) \
+$(TRIM_DIR):
 	-mkdir $@
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
 trim : index $(TR_READS)
@@ -113,12 +123,12 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
 	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
 
-runs/BOWTIE2-BUILD.out : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
+$(BT2_RUN)/BOWTIE2-BUILD.out : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
 	sbatch \
 	-D $(ROOD_DIR) \
 	-J BOWTIE2-BUILD \
-	-o runs/BOWTIE2-BUILD.out \
-	-e runs/BOWTIE2-BUILD.err \
+	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
+	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
 	$^ $(addprefix $(IDX_DIR)/, $(PREFIX)) 
 	# SLURM_Array -c $(RUNFILES)/make-index.txt \
 	# 	-r runs/BOWTIE2-BUILD \
