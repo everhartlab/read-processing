@@ -89,7 +89,9 @@ joiner = reads/$(1)_1.fq.gz,\
 MANIFEST := $(foreach x,$(patsubst reads/%,%, $(READS)),$(call joiner,$(x)))
 
 
-$(RUNFILES) $(IDX_DIR) $(SAM_DIR) $(BAM_DIR) $(REF_DIR) $(GVCF_DIR) $(TRIM_DIR):
+$(RUNFILES) \
+$(IDX_DIR) \
+$(SAM_DIR) $(BAM_DIR) $(REF_DIR) $(GVCF_DIR) $(TRIM_DIR):
 	-mkdir $@
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
 trim : index $(TR_READS)
@@ -111,7 +113,7 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
 	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
 
-runs/BOWTIE2-BUILD.out : scripts/make-index.sh $@ $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
+runs/BOWTIE2-BUILD.out : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(RUNFILES)
 	sbatch \
 	-D $(ROOD_DIR) \
 	-J BOWTIE2-BUILD \
