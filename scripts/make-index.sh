@@ -63,9 +63,10 @@ echo "  Started on:           " `/bin/hostname -s`
 echo "  Started at:           " `/bin/date`
 echo $CMD
 
+cat "$SLURM_ARRAY_JOB_ID" > $JOBFILE
+
 eval $TIME$CMD # Running the command.
 
 echo "  Finished at:           " `date`
 echo
-cat "$SLURM_ARRAY_JOB_ID" > $JOBFILE
 # End of file
