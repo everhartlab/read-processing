@@ -46,7 +46,7 @@ READ_PREFIX=$1
 TRIM_DIR=$2
 
 CMD="trimmomatic PE -phred33 ${READ_PREFIX}_1.fq.gz ${READ_PREFIX}_2.fq.gz"
-CMD=$CMD" -baseout ${TRIM_DIR}/\1.fq.gz"
+CMD=$CMD" -baseout ${TRIM_DIR}/${READ_PREFIX}.fq.gz"
 CMD=$CMD" ILLUMINACLIP:/util/opt/anaconda/2.0/envs/trimmomatic-0.36/share/trimmomatic/adapters/TruSeq3-PE.fa:2:30:10"
 CMD=$CMD" LEADING:28"
 CMD=$CMD" TRAILING:28"
