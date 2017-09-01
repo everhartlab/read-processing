@@ -59,12 +59,12 @@ BASE=$(basename $SAMPLE)
 RGID="--rg-id ${INFO[2]}.${INFO[3]}"
 RG="--rg SM:$BASE --rg PL:ILLUMINA --rg LB:RUN.${INFO[1]}"
 
-CMD="$MKFIFO; $WFIFO $CMD$BASE.sam $ARGS $RGID $RG"
-
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
 # by 4x; this is compensated for in the SGE_Plotdir script.
 TIME='/usr/bin/env time -f " \\tFull Command:                      %C \\n\\tMemory (kb):                       %M \\n\\t# SWAP  (freq):                    %W \\n\\t# Waits (freq):                    %w \\n\\tCPU (percent):                     %P \\n\\tTime (seconds):                    %e \\n\\tTime (hh:mm:ss.ms):                %E \\n\\tSystem CPU Time (seconds):         %S \\n\\tUser   CPU Time (seconds):         %U " '
+CMD="$MKFIFO; $WFIFO $CMD$BASE.sam $ARGS $RGID $RG"
+
 
 # Write details to stdout
 echo "  Job: $SLURM_JOB_ID"
@@ -77,7 +77,7 @@ echo $CMD
 # a target for the Makefile that is older than the multiple files for output.
 # printf "$SLURM_JOB_ID\n" > $JOBFILE
 
-eval $TIME$CMD # Running the command.
+eval "$TIME$MKFIFO; $TIME$WFIFO $CMD$BASE.sam $ARGS $RGID $RG" # Running the command.
 
 echo "  Finished at:           " `date`
 echo
