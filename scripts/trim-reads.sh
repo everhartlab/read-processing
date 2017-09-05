@@ -9,11 +9,9 @@
 # Request some processors
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
-#
-# 
-module load trimmomatic/0.36
 
-if [ $# -lt 2 ]; then
+
+if [ $# -lt 3 ]; then
 	echo 
 	echo "Trim reads with trimmomatic"
 	echo
@@ -23,10 +21,11 @@ if [ $# -lt 2 ]; then
 	echo
 	echo "Usage:"
 	echo
-	echo "	bash trim-reads.sh <readpair> <trim_dir>" 
+	echo "	bash trim-reads.sh <readpair> <trim_dir> <trimmomatic>" 
 	echo
-	echo "	<readpair> - prefix to pair of gzipped fasta files"
-	echo "	<trim_dir> - the directory to store the outupt"
+	echo "	<readpair>    - prefix to pair of gzipped fasta files"
+	echo "	<trim_dir>    - the directory to store the outupt"
+	echo "	<trimmomatic> - module for trimmomatic (e.g. trimmomatic/0.36)"
 	echo
 	echo "Output consists of four files in the trim_dir:"
 	echo
@@ -39,6 +38,7 @@ fi
 
 READ_PREFIX=$1
 TRIM_DIR=$2
+TRIMMOMATIC=$3
 
 CMD="trimmomatic PE -phred33 reads/${READ_PREFIX}_1.fq.gz reads/${READ_PREFIX}_2.fq.gz"
 CMD=$CMD" -baseout ${TRIM_DIR}/${READ_PREFIX}.fq.gz"
@@ -47,6 +47,8 @@ CMD=$CMD" LEADING:28"
 CMD=$CMD" TRAILING:28"
 CMD=$CMD" SLIDINGWINDOW:4:28"
 CMD=$CMD" MINLEN:36"
+
+module load $TRIMMOMATIC
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage

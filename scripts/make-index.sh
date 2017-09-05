@@ -9,16 +9,8 @@
 # Request some processors
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
-#
-# -----------------------------------------------------------------------------
-# 	This file makes a copy of one file to another on a SLURM Array.
-#
-# -----------------------------------------------------------------------------
-#
-# 
-module load bowtie/2.2
 
-if [ $# -lt 3 ]; then
+if [ $# -lt 4 ]; then
 	echo 
 	echo "Create index for bowtie2"
 	echo
@@ -27,11 +19,12 @@ if [ $# -lt 3 ]; then
 	echo
 	echo "Usage:"
 	echo
-	echo "	bash make-index.sh <input_reference.fasta> <index_prefix> <jobfile>" 
+	echo "	bash make-index.sh <input_reference.fasta> <index_prefix> <jobfile> <bt2mod>" 
 	echo
 	echo "	<input_reference.fasta> - fasta or gzipped fasta file"
-	echo "	<index_prefix> - prefix for the output files"
-	echo "	<jobfile> - output for dummy file"
+	echo "	<index_prefix>          - prefix for the output files"
+	echo "	<jobfile>               - output for dummy file"
+	echo "	<bt2mod>                - bowtie2 module (e.g. bowtie/2.2)"
 	echo
 	exit
 fi
@@ -39,6 +32,7 @@ fi
 INPUT_REF=$1
 INDEX_PREFIX=$2
 JOBFILE=$3
+BOWTIE=$4
 CMD="bowtie2-build --seed 99"
 
 
@@ -49,6 +43,7 @@ else
 	CMD="$CMD $INPUT_REF $INDEX_PREFIX"
 fi
 
+module load $(BOWTIE)
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
 # by 4x; this is compensated for in the SGE_Plotdir script.

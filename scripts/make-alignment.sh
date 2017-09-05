@@ -9,34 +9,36 @@
 # Request some processors
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
-#
 
-module load bowtie/2.2
-
-if [ $# -lt 4 ]; then
-        echo
-        echo "Align samples to indexed genome output."
-        echo
-        echo
-        echo "This assumes that the data are paired-end reads."
-        echo
-        echo "Usage:"
-        echo
-        echo "  bash make-index.sh <bt2-idx> <dir> <sample>"
-        echo
-        echo "	<bt2-idx> - basename of reference (with path)"
-        echo "	<dir>     - directory in which to place the SAM files"
-		echo "	<suffix>  - suffix for the reads (e.g.: P.fq.gz)"
-		echo "	<sample>  - a sample without the suffix (e.g.: TRIM/SS.11.01)"
-        echo
-        exit
+if [ $# -lt 5 ]; then
+	echo
+	echo "Align samples to indexed genome output."
+	echo
+	echo
+	echo "This assumes that the data are paired-end reads."
+	echo
+	echo "Usage:"
+	echo
+	echo "  bash make-index.sh <bt2-idx> <dir> <sample> <bt2mod>"
+	echo
+	echo "	<bt2-idx> - basename of reference (with path)"
+	echo "	<dir>     - directory in which to place the SAM files"
+	echo "	<suffix>  - suffix for the reads (e.g.: P.fq.gz)"
+	echo "	<sample>  - a sample without the suffix (e.g.: TRIM/SS.11.01)"
+	echo "  <bt2mod>  - bowtie2 module (bowtie/2.2)"
+	echo
+	exit
 fi
+
+
 
 IDX=$1
 DIR=$2
 SUF=$3
 SAMPLE=$4
+BT2MOD=$5
 
+module load $BT2MOD
 
 CMD="bowtie2 -x $IDX -S $DIR/"
 

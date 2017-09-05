@@ -54,10 +54,12 @@ INT_RUN  := $(RUNS)/GATK-INTERVALS
 BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
 TRM_RUN  := $(RUNS)/TRIM-READS
 MAP_RUN  := $(RUNS)/MAP-READS
+SVL_RUN  := $(RUNS)/VALIDATE-SAM
 
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
+TRIMMOD  := trimmomatic/0.36
 SAMTOOLS := samtools/1.3
 PICARD   := picard/1.1
 GATK     := gatk/3.4
@@ -112,7 +114,9 @@ $(TRIM_DIR):
 $(INT_RUN) \
 $(BT2_RUN) \
 $(TRM_RUN) \
-$(MAP_RUN): $(RUNS)
+$(MAP_RUN) \
+$(SVL_RUN) \
+: $(RUNS)
 	-mkdir $@
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
@@ -152,7 +156,7 @@ $(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 	-J BOWTIE2-BUILD \
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
-	scripts/make-index.sh $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@
+	scripts/make-index.sh $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE)
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
@@ -163,7 +167,7 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-J TRIM-READS \
 	-o $(TRM_RUN)/$*.out \
 	-e $(TRM_RUN)/$*.err \
-	scripts/trim-reads.sh $* $(@D)
+	scripts/trim-reads.sh $* $(@D) $(TRIMMOD)
 
 $(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
 
@@ -178,26 +182,18 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/j
 	-o $(MAP_RUN)/$*.out \
 	-e $(MAP_RUN)/$*.err \
 	scripts/make-alignment.sh \
-	$(addprefix $(IDX_DIR)/, $(PREFIX)) \
-	$(@D) \
-	P.fq.gz \
-	$(<D)/$*
+	  $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE)
 
-runs/VALIDATE-SAM/VALIDATE-SAM.sh: $(SAM) | $(SAM_DIR) 
-	echo $^ | \
-	sed -r 's/'\
-	'($(SAM_DIR)[^ ]+?).sam *'\
-	'/'\
-	'samtools stats \1.sam | gzip -c > \1_stats.txt.gz\n'\
-	'/g' > $(RUNFILES)/validate-sam.txt # end
-	SLURM_Array -c $(RUNFILES)/validate-sam.txt \
-		--mail $(EMAIL) \
-		-r runs/VALIDATE-SAM \
-		-l $(SAMTOOLS) \
-		--hold \
-		-w $(ROOT_DIR)
-
-$(SAM_VAL): $(SAM) runs/VALIDATE-SAM/VALIDATE-SAM.sh
+# Validating the mapping ------------------------------------------------------
+$(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh
+	sleep 1
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VALIDATE-READS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(MAP_RUN)/$*.out) \
+	-o $(SVL_RUN)/$*.out \
+	-e $(SVL_RUN)/$*.err \
+	scripts/validate-sam.sh $< $(SAMTOOLS)
 
 # SAMTOOLS SPECIFICATIONS
 #
