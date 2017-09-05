@@ -55,6 +55,7 @@ BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
 TRM_RUN  := $(RUNS)/TRIM-READS
 MAP_RUN  := $(RUNS)/MAP-READS
 SVL_RUN  := $(RUNS)/VALIDATE-SAM
+BVL_RUN  := $(RUNS)/VALIDATE-BAM
 
 
 # Modules and environmental variables
@@ -77,12 +78,12 @@ TR_PRE   := $(patsubst reads/%,$(TRIM_DIR)/%, $(READS))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bz2 .2.bz2 .3.bz2 .4.bz2 .rev.1.bz2 .rev.2.bz2)
 SAM      := $(patsubst reads/%.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
 SAM_VAL  := $(patsubst %.sam, %_stats.txt.gz, $(SAM))
-BAM      := $(patsubst $(SAM_DIR)/%.sam, $(BAM_DIR)/%_nsort, $(SAM))
-FIXED    := $(patsubst %_nsort, %_fixed.bam, $(BAM))
-DUPMRK   := $(patsubst %_nsort, %_dupmrk.bam, $(BAM))
+BAM      := $(patsubst $(SAM_DIR)/%.sam, $(BAM_DIR)/%_nsort.bam, $(SAM))
+FIXED    := $(patsubst %_nsort.bam, %_fixed.bam, $(BAM))
+DUPMRK   := $(patsubst %_nsort.bam, %_dupmrk.bam, $(BAM))
 GVCF     := $(patsubst reads/%,$(GVCF_DIR)/%.g.vcf.gz, $(READS))
-DUP_VAL  := $(patsubst %_nsort, %_dupmrk_stats.txt.gz, $(BAM))
-PLOT_VAL := $(patsubst %_nsort, %/, $(BAM))
+DUP_VAL  := $(patsubst %_nsort.bam, %_dupmrk_stats.txt.gz, $(BAM))
+PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
 BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
 
@@ -90,7 +91,7 @@ joiner = reads/$(1)_1.fq.gz,\
 	reads/$(1)_2.fq.gz,\
 	$(SAM_DIR)/$(1).sam,\
 	$(SAM_DIR)/$(1)_stats.txt.gz,\
-	$(BAM_DIR)/$(1)_nsort,\
+	$(BAM_DIR)/$(1)_nsort.bam,\
 	$(BAM_DIR)/$(1)_fixed.bam,\
 	$(BAM_DIR)/$(1)_fixed_stats.txt.gz,\
 	$(BAM_DIR)/$(1)_dupmrk.bam,\
@@ -116,6 +117,8 @@ $(BT2_RUN) \
 $(TRM_RUN) \
 $(MAP_RUN) \
 $(SVL_RUN) \
+$(BAM_RUN) \
+$(BVL_RUN) \
 : $(RUNS)
 	-mkdir $@
 
@@ -173,7 +176,6 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 
 $(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
 
-
 # Mapping the reads -----------------------------------------------------------
 $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/jobid.txt | $(SAM_DIR) $(MAP_RUN) 
 	sleep 1
@@ -188,7 +190,7 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/j
 	   cut -c 21- > $@.jid
 
 # Validating the mapping ------------------------------------------------------
-$(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh
+$(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh | $(SVL_RUN)
 	sleep 1
 	sbatch \
 	-D $(ROOT_DIR) \
@@ -198,76 +200,37 @@ $(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh
 	-e $(SVL_RUN)/$*.err \
 	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
-# SAMTOOLS SPECIFICATIONS
-#
-# http://www.htslib.org/doc/
-# view
-# # -b       output BAM
-# # -S       ignored (input format is auto-detected)
-# # -u       uncompressed BAM output (implies -b)
-#
-# sort
-# # -n         Sort by read name
-# # -o FILE    output file name [stdout]
-# # -O FORMAT  Write output as FORMAT ('sam'/'bam'/'cram')   (either -O or
-# # -T PREFIX  Write temporary files to PREFIX.nnnn.bam       -T is required)
-#
-# calmd
-# # -u         uncompressed BAM output (for piping)
-runs/SAM-TO-BAM/SAM-TO-BAM.sh: $(SAM) | $(BAM_DIR)
-	echo $^ | \
-	sed -r 's/'\
-	'$(SAM_DIR)([^ ]+?).sam *'\
-	'/'\
-	'samtools view -bSu $(SAM_DIR)\1.sam | '\
-	'samtools sort -n -O bam -o $(BAM_DIR)\1_nsort -T $(BAM_DIR)\1_nsort_tmp\n'\
-	'/g' > $(RUNFILES)/sam-to-bam.txt # end
-	SLURM_Array -c $(RUNFILES)/sam-to-bam.txt \
-		--mail $(EMAIL) \
-		-r runs/SAM-TO-BAM \
-		-l $(SAMTOOLS) \
-		--hold \
-		-w $(ROOT_DIR)
+# Sorting and Converting to BAM files -----------------------------------------
+$(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_RUN) $(BAM_DIR)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J SAM-TO-BAM \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(BAM_RUN)/$*_nsort.out \
+	-e $(BAM_RUN)/$*_nsort.err \
+	scripts/sam-to-bam.sh $(<D) $(@D) $* $(SAMTOOLS) | \
+	   cut -c 21- > $@.jid
 
-$(BAM) : $(SAM) runs/SAM-TO-BAM/SAM-TO-BAM.sh
-# Fix mate information and add the MD tag.
-# # http://samtools.github.io/hts-specs/
-# # MD = String for mismatching positions
-# # NM = Edit distance to the reference
-runs/FIXMATE/FIXMATE.sh: $(BAM) | $(BAM_DIR)
-	echo $^ | \
-	sed -r 's@'\
-	'([^ ]+?)_nsort *'\
-	'@'\
-	'samtools fixmate -O bam \1_nsort /dev/stdout | '\
-	'samtools sort -O bam -o - -T \1_csort_tmp | '\
-	'samtools calmd -b - $(REF_FNA) > \1_fixed.bam\n'\
-	'@g' > $(RUNFILES)/fixmate.txt # end
-	SLURM_Array -c $(RUNFILES)/fixmate.txt \
-		--mail $(EMAIL) \
-		-r runs/FIXMATE \
-		-l $(SAMTOOLS) \
-		--hold \
-		-w $(ROOT_DIR)
+# Fix mate information and add the MD tag -------------------------------------
+$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh 
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J ADD-MD-TAG \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(BAM_RUN)/$*_fixed.out \
+	-e $(BAM_RUN)/$*_fixed.err \
+	scripts/add-MD-tag.sh $< $(SAMTOOLS) $(REF_FNA) | \
+	   cut -c 21- > $@.jid
 
-$(FIXED) : $(BAM) runs/FIXMATE/FIXMATE.sh
-
-runs/VALIDATE-BAM/VALIDATE-BAM.sh: $(FIXED) | $(BAM_DIR)
-	echo $^ | \
-	sed -r 's@'\
-	'([^ ]+?)_fixed.bam *'\
-	'@'\
-	'samtools stats \1_fixed.bam | '\
-	'gzip -c > \1_fixed_stats.txt.gz\n'\
-	'@g' > $(RUNFILES)/validate-bam.txt # end
-	SLURM_Array -c $(RUNFILES)/validate-bam.txt \
-		--mail $(EMAIL) \
-		-r runs/VALIDATE-BAM \
-		-l $(SAMTOOLS) \
-		--hold \
-		-w $(ROOT_DIR)
-
-$(BAM_VAL) : $(FIXED) runs/VALIDATE-BAM/VALIDATE-BAM.sh
+# Validating the bamfiles -----------------------------------------------------
+$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)%_fixed.bam scripts/validate-sam.sh | $(BVL_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VALIDATE-BAMS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(BVL_RUN)/$*.out \
+	-e $(BVL_RUN)/$*.err \
+	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 runs/MARK-DUPS/MARK-DUPS.sh: $(FIXED)
 	echo $^ | \
