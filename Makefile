@@ -146,7 +146,7 @@ $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scrip
 	scripts/make-GATK-intervals.sh $< 0 $@
 
 # Indexing the genome for Bowtie2 ---------------------------------------------
-$(BT2_RUN)/BOWTIE2-BUILD.out : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
+$(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J BOWTIE2-BUILD \
@@ -165,11 +165,16 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-e $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).err \
 	scripts/trim-reads.sh $(patsubst reads/%_1.fq.gz,%,$<) $(TRIM_DIR)
 
+$(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
+
+
 # Mapping the reads -----------------------------------------------------------
-$(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh | $(SAM_DIR) $(MAP_RUN)
+$(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/jobid.txt | $(SAM_DIR) $(MAP_RUN) 
+	sleep 1
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/BOWTIE2-BUILD.out $(TRM_RUN)/$*.out) \
 	-o $(MAP_RUN)/$(patsubst $(TRIM_DIR)/%_1P.fq.gz,%,$<).out \
 	-e $(MAP_RUN)/$(patsubst $(TRIM_DIR)/%_1P.fq.gz,%,$<).err \
 	scripts/make-alignment.sh \
@@ -516,7 +521,7 @@ runclean.%:
 	$(RM) -r runs/$*
 
 burn:
-	$(RM) -r $(IDX_DIR) $(SAM_DIR) $(BAM_DIR) $(GVCF_DIR) runs $(REF_DIR) $(RUNFILES)
+	$(RM) -r $(TRIM_DIR) $(IDX_DIR) $(SAM_DIR) $(BAM_DIR) $(GVCF_DIR) runs $(REF_DIR) $(RUNFILES)
 
 
 
