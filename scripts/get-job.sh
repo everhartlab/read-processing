@@ -2,11 +2,23 @@
 
 if [ $# -lt 1 ]; then
 	echo 
-	echo "Usage: bash get-job.sh file.out"
+	echo "Usage: bash get-job.sh FILES..."
 	echo
-	echo "	file.out : an output file where the first line contains a Job ID"
-	echo "	           specified as '  Job: XXXXXXX'"
+	echo "	FILES : output files where the first line contains a Job ID"
+	echo "	        specified as '  Job: XXXXXXX'"
+	echo
+	echo "The output will be a string of job numbers separated by colons:"
+	echo
+	echo "	24642:23890:31190"
 	exit
 fi
 
-head -n 1 $1 | sed -e 's/.*  Job: //'
+OUT=()
+counter=0
+
+for i in $@
+do
+	OUT[counter++]=$(head -n 1 $i | sed -e 's/.*  Job: //' | tr '\n' ':')
+done
+
+tr -d " " <<< $(rev <<< ${OUT[@]} | cut -c 2- | rev)
