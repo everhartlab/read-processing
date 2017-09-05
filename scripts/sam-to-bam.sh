@@ -51,8 +51,8 @@ BAMDIR=$2
 BASE=$3
 SAMTOOLS=$4
 
-SAM=$SAMDIR$BASE".sam"
-BAM=$BAMDIR$BASE"_nsort"
+SAM=$SAMDIR/$BASE".sam"
+BAM=$BAMDIR/$BASE"_nsort"
 BAMTMP=$BAM"_tmp"
 
 CMD="samtools view -bSu $SAM | samtools sort -n -O bam -o $BAM.bam -T $BAMTMP"
