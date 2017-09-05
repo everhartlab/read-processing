@@ -29,7 +29,7 @@ SAMTOOLS=$2
 OUT=$(sed 's/\..am$/_stats.txt.gz/' <<< $SAM)
 CMD="samtools stats $SAM | gzip -c > $OUT"
 
-module load $(SAMTOOLS)
+module load $SAMTOOLS
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
