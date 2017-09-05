@@ -156,7 +156,9 @@ $(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 	-J BOWTIE2-BUILD \
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
-	scripts/make-index.sh $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE)
+	scripts/make-index.sh \
+	   $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE) | \
+	   cut -c 21- > $@ 
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
@@ -167,7 +169,7 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-J TRIM-READS \
 	-o $(TRM_RUN)/$*.out \
 	-e $(TRM_RUN)/$*.err \
-	scripts/trim-reads.sh $* $(@D) $(TRIMMOD)
+	scripts/trim-reads.sh $* $(@D) $(TRIMMOD) | cut -c 21- > $(@D)/$*.jid
 
 $(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
 
@@ -178,11 +180,12 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/j
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/BOWTIE2-BUILD.out $(TRM_RUN)/$*.out) \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/jobid.txt $(<D)/$*.jid) \
 	-o $(MAP_RUN)/$*.out \
 	-e $(MAP_RUN)/$*.err \
 	scripts/make-alignment.sh \
-	  $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE)
+	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE) | \
+	   cut -c 21- > $@.jid
 
 # Validating the mapping ------------------------------------------------------
 $(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh
@@ -190,10 +193,10 @@ $(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VALIDATE-READS \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(MAP_RUN)/$*.out) \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	-o $(SVL_RUN)/$*.out \
 	-e $(SVL_RUN)/$*.err \
-	scripts/validate-sam.sh $< $(SAMTOOLS)
+	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 # SAMTOOLS SPECIFICATIONS
 #

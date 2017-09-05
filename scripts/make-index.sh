@@ -43,7 +43,7 @@ else
 	CMD="$CMD $INPUT_REF $INDEX_PREFIX"
 fi
 
-module load $(BOWTIE)
+module load $BOWTIE
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
 # by 4x; this is compensated for in the SGE_Plotdir script.
@@ -58,7 +58,7 @@ echo $CMD
 
 # Writing to a jobfile before the command is executed allows for a hack to make
 # a target for the Makefile that is older than the multiple files for output.
-printf "$SLURM_JOB_ID\n" > $JOBFILE
+# printf "$SLURM_JOB_ID\n" > $JOBFILE
 
 eval $TIME$CMD # Running the command.
 
