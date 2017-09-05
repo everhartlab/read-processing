@@ -57,12 +57,14 @@ MAP_RUN  := $(RUNS)/MAP-READS
 SVL_RUN  := $(RUNS)/VALIDATE-SAM
 BVL_RUN  := $(RUNS)/VALIDATE-BAM
 BAM_RUN  := $(RUNS)/SAM-TO-BAM
+MKD_RUN  := $(RUNS)/MARK-DUPS
+DVL_RUN  := $(RUNS)/VALIDATE-DUPS
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
 TRIMMOD  := trimmomatic/0.36
 SAMTOOLS := samtools/1.3
-PICARD   := picard/1.1
+PICARD   := picard/2.9
 GATK     := gatk/3.4
 gatk     := \$$GATK
 PIC      := \$$PICARD
@@ -118,6 +120,8 @@ $(TRM_RUN) \
 $(MAP_RUN) \
 $(SVL_RUN) \
 $(BAM_RUN) \
+$(MKD_RUN) \
+$(DVL_RUN) \
 $(BVL_RUN): $(RUNS)
 	-mkdir $@
 
@@ -229,29 +233,25 @@ $(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)/%_fixed.bam scripts/validate-sam.sh
 	-e $(BVL_RUN)/$*.err \
 	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
-runs/MARK-DUPS/MARK-DUPS.sh: $(FIXED)
-	echo $^ | \
-	sed -r 's@'\
-	'([^ ]+?)_fixed.bam *'\
-	'@'\
-	'java -Djava.io.tmpdir=$(TMP) '\
-	'-jar $(PIC) MarkDuplicates '\
-	'I=\1_fixed.bam '\
-	'O=\1_dupmrk.bam '\
-	'MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000 '\
-	'ASSUME_SORTED=true '\
-	'M=\1_marked_dup_metrics.txt; '\
-	'samtools index \1_dupmrk.bam\n'\
-	'@g' > $(RUNFILES)/mark-dups.txt # end
-	SLURM_Array -c $(RUNFILES)/mark-dups.txt \
-		--mail $(EMAIL) \
-		-r runs/MARK-DUPS \
-		-l $(PICARD) $(SAMTOOLS) \
-		--hold \
-		-m 25g \
-		-w $(ROOT_DIR)
+# Marking optical duplicates with picard --------------------------------------
+$(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed_stats.txt.gz scripts/mark-duplicates.sh | $(MKD_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MARK-DUPS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(MKD_RUN)/$*.out \
+	-e $(MKD_RUN)/$*.err \
+	scripts/mark-duplicates.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
 
-$(DUPMRK) : $(FIXED) runs/MARK-DUPS/MARK-DUPS.sh
+# Validating the optical duplicate filtering ----------------------------------
+$(BAM_DIR)/%_dupmrk_stats.txt.gz : $(BAM_DIR)/%_dupmrk.bam scripts/validate-sam.sh | $(DVL_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VALIDATE-BAMS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(DVL_RUN)/$*.out \
+	-e $(DVL_RUN)/$*.err \
+	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 runs/GET-DEPTH/GET-DEPTH.sh: $(DUPMRK)
 	echo 'samtools depth $^ | gzip -c > $(BAM_DIR)/depth_stats.txt.gz' > $(RUNFILES)/get-depth.txt # end
@@ -268,23 +268,6 @@ runs/GET-DEPTH/GET-DEPTH.sh: $(DUPMRK)
 		-l $(SAMTOOLS) \
 		--hold \
 		-w $(ROOT_DIR)	
-
-runs/VALIDATE-DUPS/VALIDATE-DUPS.sh: $(DUPMRK)
-	echo $^ | \
-	sed -r 's@'\
-	'([^ ]+?)_dupmrk.bam *'\
-	'@'\
-	'samtools stats \1_dupmrk.bam | '\
-	'gzip -c > \1_dupmrk_stats.txt.gz\n'\
-	'@g' > $(RUNFILES)/validate-dups.txt # end
-	SLURM_Array -c $(RUNFILES)/validate-dups.txt \
-		--mail $(EMAIL) \
-		-r runs/VALIDATE-DUPS \
-		-l $(SAMTOOLS) \
-		--hold \
-		-w $(ROOT_DIR)	
-
-$(DUP_VAL): $(DUPMRK) runs/VALIDATE-DUPS/VALIDATE-DUPS.sh
 
 runs/PLOT-VALS/PLOT-VALS.sh: $(DUP_VAL)
 	echo $^ | \
