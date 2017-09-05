@@ -11,32 +11,25 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
 #
-# -----------------------------------------------------------------------------
-# 	This file makes a copy of one file to another on a SLURM Array.
-#
-# -----------------------------------------------------------------------------
-#
 #
 if [ $# -lt 2 ]; then
 	echo
-	echo "Run a file"
+	echo "Validate samfiles with samtools stats"
 	echo
+	echo "Usage: bash validate-sam.sh <samfile> <samtools-module>"
 	echo
-	echo "This script takes a file in and copies it to out"
-	echo
-	echo "Usage:"
-	echo
-	echo "	sbatch -J JOBNAME \\"
-	echo "	       -o PATH/TO/outfile.out \\"
-	echo "	       -e PATH/TO/errorfile.err \\"
-	echo "	       run.sh <in> <out>"
+	echo "	<samfile> a sam file with the extension .sam"
+	echo "	<samtools-module> the samtools module (e.g. samtools/1.3)"
 	echo
 	exit
 fi
 
-IN=$1
-OUT=$2
-CMD="cp $IN $OUT"
+SAM=$1
+SAMTOOLS=$2
+OUT=$(sed 's/\.sam$/_stats.txt.gz/' <<< $SAM)
+CMD="samtools stats $SAM | gzip -c > $OUT"
+
+module load $(SAMTOOLS)
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
