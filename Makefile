@@ -118,8 +118,7 @@ $(TRM_RUN) \
 $(MAP_RUN) \
 $(SVL_RUN) \
 $(BAM_RUN) \
-$(BVL_RUN) \
-: $(RUNS)
+$(BVL_RUN): $(RUNS)
 	-mkdir $@
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
@@ -201,7 +200,7 @@ $(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh | $(SVL_RUN
 	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 # Sorting and Converting to BAM files -----------------------------------------
-$(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_RUN) $(BAM_DIR)
+$(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(BAM_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J SAM-TO-BAM \
@@ -212,7 +211,7 @@ $(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_RUN) $(B
 	   cut -c 21- > $@.jid
 
 # Fix mate information and add the MD tag -------------------------------------
-$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh 
+$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh | $(BAM_DIR) $(BAM_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J ADD-MD-TAG \
@@ -223,7 +222,7 @@ $(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh
 	   cut -c 21- > $@.jid
 
 # Validating the bamfiles -----------------------------------------------------
-$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)%_fixed.bam scripts/validate-sam.sh | $(BVL_RUN)
+$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)%_fixed.bam scripts/validate-sam.sh | $(BAM_DIR) $(BVL_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VALIDATE-BAMS \
