@@ -161,9 +161,9 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J TRIM-READS \
-	-o $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).out \
-	-e $(TRM_RUN)/$(patsubst reads/%_1.fq.gz,%,$<).err \
-	scripts/trim-reads.sh $(patsubst reads/%_1.fq.gz,%,$<) $(TRIM_DIR)
+	-o $(TRM_RUN)/$*.out \
+	-e $(TRM_RUN)/$*.err \
+	scripts/trim-reads.sh $* $(@D)
 
 $(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
 
@@ -175,13 +175,13 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/j
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/BOWTIE2-BUILD.out $(TRM_RUN)/$*.out) \
-	-o $(MAP_RUN)/$(patsubst $(TRIM_DIR)/%_1P.fq.gz,%,$<).out \
-	-e $(MAP_RUN)/$(patsubst $(TRIM_DIR)/%_1P.fq.gz,%,$<).err \
+	-o $(MAP_RUN)/$*.out \
+	-e $(MAP_RUN)/$*.err \
 	scripts/make-alignment.sh \
 	$(addprefix $(IDX_DIR)/, $(PREFIX)) \
-	$(SAM_DIR) \
+	$(@D) \
 	P.fq.gz \
-	$(patsubst %_1P.fq.gz,%,$<)
+	$(<D)/$*
 
 runs/VALIDATE-SAM/VALIDATE-SAM.sh: $(SAM) | $(SAM_DIR) 
 	echo $^ | \
