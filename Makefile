@@ -129,7 +129,7 @@ index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX)
 trim : $(TR_READS)
 map : index trim $(SAM) $(SAM_VAL) 
 bam : map $(BAM) $(FIXED) $(BAM_VAL) 
-dup : bam $(DUPMRK) $(DUP_VAL) runs/GET-DEPTH/GET-DEPTH.sh
+dup : bam $(DUPMRK) $(DUP_VAL) # runs/GET-DEPTH/GET-DEPTH.sh
 plot : $(PLOT_VAL)
 vcf : dup $(REF_IDX) $(GVCF) $(VCF)
 concat : runs/CONCAT-VCF/CONCAT-VCF.sh
