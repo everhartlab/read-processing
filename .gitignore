@@ -8,3 +8,5 @@ BAMS/*
 REF/*
 GVCF/*
 .slurm_array_jobnums
+graph.dot
+graph.pdf
