@@ -40,36 +40,83 @@ traditional makefiles is the fact that I wrote it in a really wonky sort of
 way where there are many dependencies for a single rule (This may change in
 the future). 
 
-Many of the rules in the makefile take the form of:
+Many of the recipes in the makefile take the form of:
 
 ```make
-.PHONY: all out
-
-all : out
-
-SAMPLES     := $(shell ls -1d samples-dir/*)
-OUT_SAMPLES := $(patsubst %.in,%.out,$(SAMPLES))
-
-out : $(OUT_SAMPLES)
-
-runs/ARRAY-JOB-NAME/ARRAY-JOB-NAME.sh : $(SAMPLES)
-	echo $^ | sed -r 's/([^ ]+?).in */script-to-run.sh \1.in -o \1.out\n/' > $(RUNFILES)/run-script-to-run.txt
-	SLURM_Array -c $(RUNFILES)/run-script-to-run.txt \
-	            --mail $(EMAIL) \
-				-r runs/ARRAY-JOB-NAME \
-				-l $(MODULE) \
-				--hold \
-				-w $(ROOT_DIR)
-
-$(OUT_SAMPLES) : $(SAMPLES) runs/ARRAY-JOB-NAME/ARRAY-JOB-NAME.sh
-
+# Converting In to Out --------------------------------------------------------
+$(OUT_DIR)/%.out : $(FROM_DIR)/%.in scripts/in-to-out.sh | $(OUT_DIR) $(OUT_RUN)
+    sbatch \
+    -D $(ROOT_DIR) \
+    -J IN-TO-OUT \
+    --dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+    -o $(OUT_RUN)/$*.out \
+    -e $(OUT_RUN)/$*.err \
+    scripts/in-to-out.sh $< | cut -c 21- > $@.jid
 ```
 
-Where the target is a phony target that generates one `OUT_SAMPLE` for every 
-`SAMPLE` via `runs/ARRAY-JOB-NAME/ARRAY-JOB-NAME.sh`. This shell script as a
-target is generated via [`SLURM_Array`][sarray] as it submits a 
-[SLURM array job][arrayjob]. Is this an elegant solution? No. It's a bit
-hamfisted, and I will probably change it in the future.
+Where [`sbatch`](https://slurm.schedmd.com/sbatch.html) is being used on the
+HCC to submit a custom SLURM script `scripts/in-to-out.sh`, which will convert
+`.in` files to `.out` files. One of the first things to note are the trailing
+backslashes. These are continuation lines for BASH, so when it runs it will run
+like this:
+
+```
+sbatch -D $(ROOT_DIR) -J IN-TO-OUT --dependency=afterok:$$(bash scripts/get-job.sh $<.jid) -o $(OUT_RUN)/$*.out -e $(OUT_RUN)/$*.err scripts/in-to-out.sh $< | cut -c 21- > $@.jid
+```
+
+All jobs run from `sbatch` will return the following:
+
+```
+Submitted batch job XXXXX
+```
+
+where `XXXXX` is the JOBID. Since *make* does not know anything about jobs
+running on SLURM, we need to tell SLURM to hold off on running a given job
+until the dependent jobs are done. We take advantage of this by piping this to
+`cut -c 21- > $@.jid`, which creates a file with the JOBID that we can use in a
+downstream process.
+
+The arguments to `sbatch` are:
+
+ - **D** Root directory for the system
+ - **J** jobname (we try to make them match the script names)
+ - **--dependency** This stipulates that this job can only run if the the
+   dependency from the .jid file has been fulfilled. Note that multiple jid
+   files can be specified. Note that because `$` is special in *make*, we have
+   to use another `$` to escape it. 
+ - **-o,-e** the stdout and stderr files, respectively.
+
+You may have noticed that this uses [automatic makefile variables](https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html) such as `$<` and `$@`, which stand for the first dependency and target, respectively. Depending on the needs of various scripts, we need different variables. It would be a good idea to keep that page open as a reference when creating new
+steps. 
+
+Here's an example from the script: 
+
+```make
+# Sorting and Converting to BAM files -----------------------------------------
+$(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(BAM_RUN)
+    sbatch \
+    -D $(ROOT_DIR) \
+    -J SAM-TO-BAM \
+    --dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+    -o $(BAM_RUN)/$*_nsort.out \
+    -e $(BAM_RUN)/$*_nsort.err \
+    scripts/sam-to-bam.sh $(<D) $(@D) $* $(SAMTOOLS) | \
+       cut -c 21- > $@.jid
+```
+
+In this example, we are using the [`sam-to-bam.sh`](scripts/sam-to-bam.sh)
+script to convert sam files to bam files. If you run the script by itself, it
+will tell you the requirements:
+
+```
+Usage: sam-to-bam.sh <SAMDIR> <BAMDIR> <BASE> <SAMTOOLS>
+
+    <SAMDIR> - the directory for the samfiles
+    <BAMDIR> - the directory for the bamfiles
+    <BASE>   - base name for the sample (e.g. SS.11.01)
+    <SAMTOOLS> - the samtools module (e.g. samtools/1.3)
+```
+
 
  
 [make-style]: http://clarkgrubb.com/makefile-style-guide
