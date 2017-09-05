@@ -177,7 +177,6 @@ $(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
 
 # Mapping the reads -----------------------------------------------------------
 $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/jobid.txt | $(SAM_DIR) $(MAP_RUN) 
-	sleep 1
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
@@ -190,7 +189,6 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/j
 
 # Validating the mapping ------------------------------------------------------
 $(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh | $(SVL_RUN)
-	sleep 1
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VALIDATE-READS \
