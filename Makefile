@@ -59,6 +59,7 @@ BVL_RUN  := $(RUNS)/VALIDATE-BAM
 BAM_RUN  := $(RUNS)/SAM-TO-BAM
 MKD_RUN  := $(RUNS)/MARK-DUPS
 DVL_RUN  := $(RUNS)/VALIDATE-DUPS
+DCT_RUN  := $(RUNS)/GATK-REF
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -122,6 +123,7 @@ $(SVL_RUN) \
 $(BAM_RUN) \
 $(MKD_RUN) \
 $(DVL_RUN) \
+$(DCT_RUN) \
 $(BVL_RUN): $(RUNS)
 	-mkdir $@
 
@@ -137,7 +139,16 @@ concat : runs/CONCAT-VCF/CONCAT-VCF.sh
 # Unzip the reference genome --------------------------------------------------
 $(REF_DIR)/%.fasta : $(FAST_DIR)/%.fasta.gz | $(REF_DIR) $(RUNFILES)
 	zcat $^ | sed -r 's/[ ,]+/_/g' > $@
-	
+
+# Create dictionary for reference
+$(REF_DIR)/%.dict : $(REF_DIR)/%.fasta | $(DCT_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAKE-GATK-REF \
+	-o $(INT_RUN)/GATK-REF.out \
+	-e $(INT_RUN)/GATK-REF.err \
+	scripts/make-GATK-ref-dict.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
+		
 # Creates intervals for the final step ----------------------------------------
 $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
 	sbatch \
@@ -145,7 +156,7 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py s
 	-J GATK-INTERVALS \
 	-o $(INT_RUN)/GATK-INTERVALS.out \
 	-e $(INT_RUN)/GATK-INTERVALS.err \
-	scripts/make-GATK-intervals.sh $< 10000 $@
+	scripts/make-GATK-intervals.sh $< 10000 $@ | cut -c 21- > $@.jid
 
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
 	sbatch \
@@ -153,7 +164,7 @@ $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scrip
 	-J GATK-SIZES \
 	-o $(INT_RUN)/GATK-SIZES.out \
 	-e $(INT_RUN)/GATK-SIZES.err \
-	scripts/make-GATK-intervals.sh $< 0 $@
+	scripts/make-GATK-intervals.sh $< 0 $@ | cut -c 21- > $@.jid
 
 # Indexing the genome for Bowtie2 ---------------------------------------------
 $(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
@@ -319,26 +330,6 @@ $(PLOT_VAL): $(DUP_VAL) runs/PLOT-VALS/PLOT-VALS.sh
 #    -I bams/${arr[0]}_dupmrk.bam \
 #    -o gvcf/${arr[0]}_3n.g.vcf.gz"
 #
-
-runs/MAKE-GATK-REF/MAKE-GATK-REF.sh: $(REF_FNA) 
-	echo $^ | \
-	sed -r 's@'\
-	'^(.+?).fasta'\
-	'@'\
-	'java -jar $(PIC) CreateSequenceDictionary '\
-	'R=\1.fasta '\
-	'O=\1.dict; '\
-	'samtools faidx \1.fasta'\
-	'@g' > $(RUNFILES)/make-gatk-ref.txt # end
-	SLURM_Array -c $(RUNFILES)/make-gatk-ref.txt \
-		--mail $(EMAIL) \
-		-r runs/MAKE-GATK-REF \
-		-l $(PICARD) $(SAMTOOLS) \
-		--hold \
-		-w $(ROOT_DIR)
-
-$(REF_IDX): $(FASTA) runs/MAKE-GATK-REF/MAKE-GATK-REF.sh
-
 # Pain points:
 # 
 # GATK is very picky as far as paths go. If it sees a relative
