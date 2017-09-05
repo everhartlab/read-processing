@@ -11,12 +11,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
 
-if [ $# -lt 4 ]; then
-	echo
-	echo "Run a file"
-	echo
-	echo
-	echo "This script takes a file in and copies it to out"
+if [ $# -lt 3 ]; then
 	echo
 	echo "Usage: add-MD-tag.sh <BAM> <SAMTOOLS> <REFERENCE>"
 	echo
