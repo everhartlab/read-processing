@@ -56,7 +56,7 @@ TRM_RUN  := $(RUNS)/TRIM-READS
 MAP_RUN  := $(RUNS)/MAP-READS
 SVL_RUN  := $(RUNS)/VALIDATE-SAM
 BVL_RUN  := $(RUNS)/VALIDATE-BAM
-
+BAM_RUN  := $(RUNS)/SAM-TO-BAM
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -211,7 +211,7 @@ $(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(B
 	   cut -c 21- > $@.jid
 
 # Fix mate information and add the MD tag -------------------------------------
-$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh | $(BAM_DIR) $(BAM_RUN) 
+$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J ADD-MD-TAG \
@@ -222,7 +222,7 @@ $(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh | $(BAM_DI
 	   cut -c 21- > $@.jid
 
 # Validating the bamfiles -----------------------------------------------------
-$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)%_fixed.bam scripts/validate-sam.sh | $(BAM_DIR) $(BVL_RUN)
+$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)/%_fixed.bam scripts/validate-sam.sh | $(BVL_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VALIDATE-BAMS \
