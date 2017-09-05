@@ -55,7 +55,7 @@ BAMFIX=$(sed 's/nsort/fixed/' <<< $BAM)
 
 CMD="samtools fixmate -O bam $BAM /dev/stdout | "
 CMD=$CMD"samtools sort -O bam -o - -T $BAMTMP | "
-CMD=$CMD"samtools calmd -b - $REFERENCE > $BAMFIX\n"
+CMD=$CMD"samtools calmd -b - $REFERENCE > $BAMFIX"
 
 
 module load $SAMTOOLS
