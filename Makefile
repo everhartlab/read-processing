@@ -146,7 +146,7 @@ $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scrip
 	scripts/make-GATK-intervals.sh $< 0 $@
 
 # Indexing the genome for Bowtie2 ---------------------------------------------
-$(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
+$(BT2_RUN)/BOWTIE2-BUILD.out : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J BOWTIE2-BUILD \
