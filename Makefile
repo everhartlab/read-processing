@@ -50,6 +50,7 @@ REF_DIR  := REF
 # Define run directories
 
 RUNS     := runs
+INT_RUN  := $(RUNS)/GATK-INTERVALS
 BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
 TRM_RUN  := $(RUNS)/TRIM-READS
 MAP_RUN  := $(RUNS)/MAP-READS
@@ -108,6 +109,7 @@ $(GVCF_DIR) \
 $(TRIM_DIR):
 	-mkdir $@
 
+$(INT_RUN) \
 $(BT2_RUN) \
 $(TRM_RUN) \
 $(MAP_RUN): $(RUNS)
@@ -122,16 +124,26 @@ plot : $(PLOT_VAL)
 vcf : dup $(REF_IDX) $(GVCF) $(VCF)
 concat : runs/CONCAT-VCF/CONCAT-VCF.sh
 
-# Unzips the reference genome
+# Unzip the reference genome --------------------------------------------------
 $(REF_DIR)/%.fasta : $(FAST_DIR)/%.fasta.gz | $(REF_DIR) $(RUNFILES)
 	zcat $^ | sed -r 's/[ ,]+/_/g' > $@
 	
-# Creates intervals for the final step. Edit the -w parameter to change.
-$(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta
-	./scripts/make-GATK-intervals.py -f $< -w 10000 > $@
+# Creates intervals for the final step ----------------------------------------
+$(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J GATK-INTERVALS \
+	-o $(INT_RUN)/GATK-INTERVALS.out \
+	-e $(INT_RUN)/GATK-INTERVALS.err \
+	scripts/make-GATK-intervals.sh $< 10000 $@
 
-$(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta
-	./scripts/make-GATK-intervals.py -f $< -w 0 > $@
+$(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J GATK-SIZES \
+	-o $(INT_RUN)/GATK-SIZES.out \
+	-e $(INT_RUN)/GATK-SIZES.err \
+	scripts/make-GATK-intervals.sh $< 0 $@
 
 # Indexing the genome for Bowtie2 ---------------------------------------------
 $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
@@ -140,7 +152,7 @@ $(BT2_RUN)/jobid.txt : scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 	-J BOWTIE2-BUILD \
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
-	$^ $(addprefix $(IDX_DIR)/, $(PREFIX)) $@
+	scripts/make-index.sh $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@
 
 $(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
 
