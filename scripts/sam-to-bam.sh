@@ -13,11 +13,6 @@
 
 if [ $# -lt 4 ]; then
 	echo
-	echo "Run a file"
-	echo
-	echo
-	echo "This script takes a file in and copies it to out"
-	echo
 	echo "Usage: sam-to-bam.sh <SAMDIR> <BAMDIR> <BASE> <SAMTOOLS>"
 	echo
 	echo "	<SAMDIR> - the directory for the samfiles"
