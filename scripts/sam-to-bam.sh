@@ -10,26 +10,54 @@
 # Request some processors
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
-#
-#
-if [ $# -lt 2 ]; then
+
+if [ $# -lt 4 ]; then
 	echo
-	echo "Validate samfiles OR bamfiles with samtools stats"
+	echo "Run a file"
 	echo
-	echo "Usage: bash validate-sam.sh <samfile> <samtools-module>"
 	echo
-	echo "	<samfile> a sam file with the extension .sam"
-	echo "	<samtools-module> the samtools module (e.g. samtools/1.3)"
+	echo "This script takes a file in and copies it to out"
+	echo
+	echo "Usage: sam-to-bam.sh <SAMDIR> <BAMDIR> <BASE> <SAMTOOLS>"
+	echo
+	echo "	<SAMDIR> - the directory for the samfiles"
+	echo "	<BAMDIR> - the directory for the bamfiles"
+	echo "	<BASE>   - base name for the sample (e.g. SS.11.01)"
+	echo "	<SAMTOOLS> - the samtools module (e.g. samtools/1.3)"
 	echo
 	exit
 fi
 
-SAM=$1
-SAMTOOLS=$2
-OUT=$(sed 's/\..am$/_stats.txt.gz/' <<< $SAM)
-CMD="samtools stats $SAM | gzip -c > $OUT"
 
-module load $(SAMTOOLS)
+# SAMTOOLS SPECIFICATIONS
+#
+# http://www.htslib.org/doc/
+# view
+# # -b       output BAM
+# # -S       ignored (input format is auto-detected)
+# # -u       uncompressed BAM output (implies -b)
+#
+# sort
+# # -n         Sort by read name
+# # -o FILE    output file name [stdout]
+# # -O FORMAT  Write output as FORMAT ('sam'/'bam'/'cram')   (either -O or
+# # -T PREFIX  Write temporary files to PREFIX.nnnn.bam       -T is required)
+#
+# calmd
+# # -u         uncompressed BAM output (for piping)
+
+SAMDIR=$1
+BAMDIR=$2
+BASE=$3
+SAMTOOLS=$4
+
+SAM=$SAMDIR$BASE".sam"
+BAM=$BAMDIR$BASE"_nsort"
+BAMTMP=$BAM"_tmp"
+
+CMD="samtools view -bSu $SAM | samtools sort -n -O bam -o $BAM.bam -T $BAMTMP"
+
+module load $SAMTOOLS
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
