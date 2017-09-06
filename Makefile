@@ -245,7 +245,7 @@ $(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)/%_fixed.bam scripts/validate-sam.sh
 	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 # Marking optical duplicates with picard --------------------------------------
-$(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed_stats.txt.gz scripts/mark-duplicates.sh | $(MKD_RUN)
+$(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed.bam scripts/mark-duplicates.sh | $(MKD_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MARK-DUPS \
