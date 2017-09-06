@@ -341,7 +341,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 # 		-P 6 \
 # 		-w $(ROOT_DIR)
 
-$(VCF) : $(GVCF) $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh | $(VCF_RUN)
+$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN)
 	for i in $$(cat $(INTERVALS)); \
 	do \
 		sbatch \
@@ -350,7 +350,7 @@ $(VCF) : $(GVCF) $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh | $(VCF_RUN
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
 		-o $(VCF_RUN)/$*.out \
 		-e $(VCF_RUN)/$*.err \
-		scripts/make-VCF.sh 
+		scripts/make-VCF.sh \
 		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
 		   $(GATK) $$i $(addprefix -V , $^) | \
 		   cut -c 21- > $(GVCF_DIR)/res.jid; \
