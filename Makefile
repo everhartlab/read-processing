@@ -354,7 +354,7 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN
 		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
 		   $(GATK) $$i $(addprefix -V , $^) | \
 		   cut -c 21- > $(GVCF_DIR)/res.jid; \
-		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $@.jid).jid; \
+		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
 	done;
 	sbatch \
 	-D $(ROOT_DIR) \
