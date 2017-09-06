@@ -362,7 +362,7 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN
 	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*.jid) \
 	-o $(VCF_RUN)/$*.out \
 	-e $(VCF_RUN)/$*.err \
-	scripts/CAT-VCF.sh $(GVCF) $(VCFTOOLS)
+	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
 
 
 # runs/CONCAT-VCF/CONCAT-VCF.sh: 
