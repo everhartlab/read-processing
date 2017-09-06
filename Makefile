@@ -302,7 +302,7 @@ runs/PLOT-VALS/PLOT-VALS.sh: $(DUP_VAL)
 $(PLOT_VAL): $(DUP_VAL) runs/PLOT-VALS/PLOT-VALS.sh
 
 # Make the GVCF files to use for variant calling later ------------------------
-$(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
+$(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-GVCF \
@@ -341,7 +341,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam make-GVCF.sh $(REF_IDX) | $(GVC
 # 		-P 6 \
 # 		-w $(ROOT_DIR)
 
-$(VCF) : $(GVCF) $(INTERVALS) | $(VCF_RUN)
+$(VCF) : $(GVCF) $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh | $(VCF_RUN)
 	for i in $$(cat $(INTERVALS)); \
 	do \
 		sbatch \
