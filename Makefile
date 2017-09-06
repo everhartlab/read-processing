@@ -67,6 +67,7 @@ VCF_RUN  := $(RUNS)/MAKE-VCF
 BOWTIE   := bowtie/2.2
 TRIMMOD  := trimmomatic/0.36
 SAMTOOLS := samtools/1.3
+VCFTOOLS := vcftools/0.1
 PICARD   := picard/2.9
 GATK     := gatk/3.4
 gatk     := \$$GATK
@@ -321,35 +322,59 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam make-GVCF.sh $(REF_IDX) | $(GVC
 #
 # I also set the number of threads with -nt and -P flags, respectively
 #
-runs/MAKE-VCF/MAKE-VCF.sh: $(GVCF)
-	printf "java -Xmx100g -Djava.io.tmpdir=$(TMP) "\
-	"-jar $(gatk) "\
-	"-nt 6 "\
-	"-T GenotypeGVCFs "\
-	"-R $(ROOT_DIR)/$(REF_FNA) "\
-	"$(addprefix -V , $^) "\
-	"-o $(GVCF_DIR)/res.\$$SLURM_ARRAY_TASK_ID.vcf.gz --intervals" | \
-	./scripts/prepend-to-file.sh $(INTERVALS) $(RUNFILES)/make-vcf.txt
-	SLURM_Array -c $(RUNFILES)/make-vcf.txt \
-		--mail $(EMAIL) \
-		-r runs/MAKE-VCF \
-		-l $(GATK) \
-		--hold \
-		-m 100g \
-		-t 24:00:00 \
-		-P 6 \
-		-w $(ROOT_DIR)
+# runs/MAKE-VCF/MAKE-VCF.sh: $(GVCF)
+# 	printf "java -Xmx100g -Djava.io.tmpdir=$(TMP) "\
+# 	"-jar $(gatk) "\
+# 	"-nt 6 "\
+# 	"-T GenotypeGVCFs "\
+# 	"-R $(ROOT_DIR)/$(REF_FNA) "\
+# 	"$(addprefix -V , $^) "\
+# 	"-o $(GVCF_DIR)/res.\$$SLURM_ARRAY_TASK_ID.vcf.gz --intervals" | \
+# 	./scripts/prepend-to-file.sh $(INTERVALS) $(RUNFILES)/make-vcf.txt
+# 	SLURM_Array -c $(RUNFILES)/make-vcf.txt \
+# 		--mail $(EMAIL) \
+# 		-r runs/MAKE-VCF \
+# 		-l $(GATK) \
+# 		--hold \
+# 		-m 100g \
+# 		-t 24:00:00 \
+# 		-P 6 \
+# 		-w $(ROOT_DIR)
 
-runs/CONCAT-VCF/CONCAT-VCF.sh: 
-	echo 'vcf-concat $(shell ls $(GVCF_DIR)/res.*.vcf.gz | sort -t'.' -n -k2)'\
-	' | gzip -c > $(GVCF_DIR)/res.vcf.gz' > \
-	$(RUNFILES)/merge-vcf.txt
-	SLURM_Array -c $(RUNFILES)/merge-vcf.txt \
-		-r runs/CONCAT-VCF \
-		-l vcftools/0.1 \
-		-w $(ROOT_DIR)
+$(VCF) : $(GVCF) $(INTERVALS)
+	for i in $$(cat $(INTERVALS)); \
+	do \
+		sbatch \
+		-D $(ROOT_DIR) \
+		-J MAKE-VCF \
+		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
+		-o $(VCF_RUN)/$*.out \
+		-e $(VCF_RUN)/$*.err \
+		scripts/make-VCF.sh 
+		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
+		   $(GATK) $$i $(addprefix -V , $^) | \
+		   cut -c 21- > $(GVCF_DIR)/res.jid; \
+		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $@.jid).jid; \
+	done; \
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAKE-VCF \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*.jid) \
+	-o $(VCF_RUN)/$*.out \
+	-e $(VCF_RUN)/$*.err \
+	scripts/CAT-VCF.sh $(GVCF) $(VCFTOOLS)
 
-$(VCF): $(GVCF) runs/MAKE-VCF/MAKE-VCF.sh
+
+# runs/CONCAT-VCF/CONCAT-VCF.sh: 
+# 	echo 'vcf-concat $(shell ls $(GVCF_DIR)/res.*.vcf.gz | sort -t'.' -n -k2)'\
+# 	' | gzip -c > $(GVCF_DIR)/res.vcf.gz' > \
+# 	$(RUNFILES)/merge-vcf.txt
+# 	SLURM_Array -c $(RUNFILES)/merge-vcf.txt \
+# 		-r runs/CONCAT-VCF \
+# 		-l vcftools/0.1 \
+# 		-w $(ROOT_DIR)
+
+# $(VCF): $(GVCF) runs/MAKE-VCF/MAKE-VCF.sh
 
 help :
 	@echo
