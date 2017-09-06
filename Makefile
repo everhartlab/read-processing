@@ -309,7 +309,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid $(REF_IDX).jid) \
 	-o $(GCF_RUN)/$*.out \
 	-e $(GCF_RUN)/$*.err \
-	scripts/make-GVCF.sh 
+	scripts/make-GVCF.sh \
 	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
 
 # 
