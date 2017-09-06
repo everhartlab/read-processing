@@ -341,7 +341,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam make-GVCF.sh $(REF_IDX) | $(GVC
 # 		-P 6 \
 # 		-w $(ROOT_DIR)
 
-$(VCF) : $(GVCF) $(INTERVALS)
+$(VCF) : $(GVCF) $(INTERVALS) | $(VCF_RUN)
 	for i in $$(cat $(INTERVALS)); \
 	do \
 		sbatch \
@@ -355,7 +355,7 @@ $(VCF) : $(GVCF) $(INTERVALS)
 		   $(GATK) $$i $(addprefix -V , $^) | \
 		   cut -c 21- > $(GVCF_DIR)/res.jid; \
 		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $@.jid).jid; \
-	done; \
+	done;
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-VCF \
