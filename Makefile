@@ -60,6 +60,8 @@ BAM_RUN  := $(RUNS)/SAM-TO-BAM
 MKD_RUN  := $(RUNS)/MARK-DUPS
 DVL_RUN  := $(RUNS)/VALIDATE-DUPS
 DCT_RUN  := $(RUNS)/GATK-REF
+GCF_RUN  := $(RUNS)/MAKE-GVCF
+VCF_RUN  := $(RUNS)/MAKE-VCF
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -124,6 +126,8 @@ $(BAM_RUN) \
 $(MKD_RUN) \
 $(DVL_RUN) \
 $(DCT_RUN) \
+$(GCF_RUN) \
+$(VCF_RUN) \
 $(BVL_RUN): $(RUNS)
 	-mkdir $@
 
@@ -296,72 +300,16 @@ runs/PLOT-VALS/PLOT-VALS.sh: $(DUP_VAL)
 
 $(PLOT_VAL): $(DUP_VAL) runs/PLOT-VALS/PLOT-VALS.sh
 
-# https://www.broadinstitute.org/gatk/documentation/article?id=3893
-# # https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php
-# # https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_variantutils_GenotypeGVCFs.php
-#
-# # Note that Haplotypecaller requires an indexed bam.
-# # If yours is not, use SAMtools.
-#
-# # If you're dealing with legacy data you may encounter legacy quality encodings.
-# # If you encounter this use:
-# #
-# # --fix_misencoded_quality_scores
-# #
-# # In your GATK call. (But only on the offending libraries.)
-# # https://software.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_engine_CommandLineGATK.php#--fix_misencoded_quality_scores
-# # https://en.wikipedia.org/wiki/FASTQ_format
-#
-#
-# CMD="$JAVA -Djava.io.tmpdir=/data/ -jar $GATK \
-#   -T HaplotypeCaller \
-#   -R $REF \
-#   --emitRefConfidence GVCF \
-#   -ploidy 2 \
-#   -I bams/${arr[0]}_dupmrk.bam \
-#   -o gvcf/${arr[0]}_2n.g.vcf.gz"
-#
-#
-# CMD="$JAVA -Djava.io.tmpdir=/data/ -jar $GATK \
-#    -T HaplotypeCaller \
-#    -R $REF \
-#    --emitRefConfidence GVCF \
-#    -ploidy 3 \
-#    -I bams/${arr[0]}_dupmrk.bam \
-#    -o gvcf/${arr[0]}_3n.g.vcf.gz"
-#
-# Pain points:
-# 
-# GATK is very picky as far as paths go. If it sees a relative
-# path, it will use pwd. On this SLURM system, this results in
-# a path that's not accessible.
-#
-# GATK assumes that you named your dict file with the basename
-# of your file and not just appended dict on the end.
-#
-runs/MAKE-GVCF/MAKE-GVCF.sh: $(DUPMRK) | $(GVCF_DIR)
-	echo $^ | \
-	sed -r 's@'\
-	'$(BAM_DIR)/([^ ]+?)_dupmrk.bam *'\
-	'@'\
-	'java -Djava.io.tmpdir=$(TMP) -jar $(gatk) '\
-	'-T HaplotypeCaller '\
-	'-R $(ROOT_DIR)/$(REF_FNA) '\
-	'--emitRefConfidence GVCF '\
-	'-ploidy 1 '\
-	'-I $(BAM_DIR)/\1_dupmrk.bam '\
-	'-o $(GVCF_DIR)/\1.g.vcf.gz\n'\
-	'@g' > $(RUNFILES)/make-gvcf.txt
-	SLURM_Array -c $(RUNFILES)/make-gvcf.txt \
-		--mail $(EMAIL) \
-		-r runs/MAKE-GVCF \
-		-l $(GATK) \
-		--hold \
-		-m 25g \
-		-w $(ROOT_DIR)
-
-$(GVCF) : $(DUPMRK) runs/MAKE-GVCF/MAKE-GVCF.sh
-
+# Make the GVCF files to use for variant calling later ------------------------
+$(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAKE-GVCF \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid $(REF_IDX).jid) \
+	-o $(GCF_RUN)/$*.out \
+	-e $(GCF_RUN)/$*.err \
+	scripts/make-GVCF.sh 
+	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
 
 # 
 # Note for this step, memory matters more than the number of cores.
