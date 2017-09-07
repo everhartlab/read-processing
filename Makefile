@@ -23,12 +23,12 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-all: $(FASTA) $(RFILES) vcf 
+all: vcf 
 
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
-FAST_DIR := mitochondria_genome
-FASTA    := $(FAST_DIR)/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.fasta.gz
+FAST_DIR := genome
+FASTA    := $(wildcard $(FAST_DIR)/*.fasta.gz)
 
 # Reads. Make sure your PE reads end with _1.fq.gz
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
@@ -40,7 +40,7 @@ ROOT_DIR := $(patsubst /lustre/%,/%,$(CURDIR))
 ROOT_DIR := $(strip $(ROOT_DIR))
 RUNFILES := runfiles
 IDX_DIR  := bt2-index
-PREFIX   := Ssc_mito # prefix for the bowtie2 index
+PREFIX   := Ssc # prefix for the bowtie2 index
 TRIM_DIR := TRIM
 SAM_DIR  := SAMS
 BAM_DIR  := BAMS
