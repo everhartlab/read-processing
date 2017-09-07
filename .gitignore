@@ -1,7 +1,10 @@
 bt2-index/*
 runs/*
-mitochondria_genome/*
-reads/*
+genome/*gz
+genome/*txt
+genome/*agp
+genome/*gtf
+reads/*gz
 TRIM/*
 SAMS/*
 BAMS/*
