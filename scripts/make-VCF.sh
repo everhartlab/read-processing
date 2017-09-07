@@ -10,6 +10,15 @@
 # Request some processors
 #SBATCH --cpus-per-task=6
 #SBATCH --ntasks=1
+# 
+# Note for this step, memory matters more than the number of cores.
+#
+# For example, here I'm using 100g of memory by setting the -Xmx
+# and the -m flag in the SLURM_Array command. Notice that for the
+# Xmx flag, the number of cores must butt up against the flag. This
+# is a Java thing.
+#
+# I also set the number of threads with -nt and -P flags, respectively
 
 if [ $# -lt 6 ]; then
 	echo
