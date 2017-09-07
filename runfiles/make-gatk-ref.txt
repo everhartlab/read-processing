@@ -1,1 +1,0 @@
-java -jar $PICARD CreateSequenceDictionary R=REF/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.fasta O=REF/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.dict; samtools faidx REF/sclerotinia_sclerotiorum_mitochondria_2_supercontigs.fasta
