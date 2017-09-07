@@ -134,12 +134,12 @@ $(BVL_RUN): $(RUNS)
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
 trim : $(TR_READS)
-map : index trim $(SAM) $(SAM_VAL) 
-bam : map $(BAM) $(FIXED) $(BAM_VAL) 
-dup : bam $(DUPMRK) $(DUP_VAL) # runs/GET-DEPTH/GET-DEPTH.sh
-plot : $(PLOT_VAL)
+map : index trim $(SAM) 
+bam : map $(BAM) $(FIXED) 
+dup : bam $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
 vcf : dup $(REF_IDX) $(GVCF) $(VCF)
-concat : runs/CONCAT-VCF/CONCAT-VCF.sh
+validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
+plot : $(PLOT_VAL)
 
 # Unzip the reference genome --------------------------------------------------
 $(REF_DIR)/%.fasta : $(FAST_DIR)/%.fasta.gz | $(REF_DIR) $(RUNFILES)
@@ -269,6 +269,46 @@ $(BAM_DIR)/%_dupmrk_stats.txt.gz : $(BAM_DIR)/%_dupmrk.bam scripts/validate-sam.
 	-e $(DVL_RUN)/$*.err \
 	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
+# Make the GVCF files to use for variant calling later ------------------------
+$(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAKE-GVCF \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid $(REF_IDX).jid) \
+	-o $(GCF_RUN)/$*.out \
+	-e $(GCF_RUN)/$*.err \
+	scripts/make-GVCF.sh \
+	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
+
+# Call variants in separate windows and concatenate ---------------------------
+$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN)
+	for i in $$(cat $(INTERVALS)); \
+	do \
+		sbatch \
+		-D $(ROOT_DIR) \
+		-J MAKE-VCF \
+		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
+		-o $(VCF_RUN)/$*.out \
+		-e $(VCF_RUN)/$*.err \
+		scripts/make-VCF.sh \
+		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
+		   $(GATK) $$i $(addprefix -V , $^) | \
+		   cut -c 21- > $(GVCF_DIR)/res.jid; \
+		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
+	done;
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAKE-VCF \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*.jid) \
+	-o $(VCF_RUN)/$*.out \
+	-e $(VCF_RUN)/$*.err \
+	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
+
+
+
+
+
+
 runs/GET-DEPTH/GET-DEPTH.sh: $(DUPMRK)
 	echo 'samtools depth $^ | gzip -c > $(BAM_DIR)/depth_stats.txt.gz' > $(RUNFILES)/get-depth.txt # end
 	grep '^>' $(REF_FNA) | \
@@ -300,81 +340,6 @@ runs/PLOT-VALS/PLOT-VALS.sh: $(DUP_VAL)
 		-w $(ROOT_DIR)
 
 $(PLOT_VAL): $(DUP_VAL) runs/PLOT-VALS/PLOT-VALS.sh
-
-# Make the GVCF files to use for variant calling later ------------------------
-$(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
-	sbatch \
-	-D $(ROOT_DIR) \
-	-J MAKE-GVCF \
-	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid $(REF_IDX).jid) \
-	-o $(GCF_RUN)/$*.out \
-	-e $(GCF_RUN)/$*.err \
-	scripts/make-GVCF.sh \
-	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
-
-# 
-# Note for this step, memory matters more than the number of cores.
-#
-# For example, here I'm using 50g of memory by setting the -Xmx
-# and the -m flag in the SLURM_Array command. Notice that for the
-# Xmx flag, the number of corse must butt up against the flag. This
-# is a Java thing.
-#
-# I also set the number of threads with -nt and -P flags, respectively
-#
-# runs/MAKE-VCF/MAKE-VCF.sh: $(GVCF)
-# 	printf "java -Xmx100g -Djava.io.tmpdir=$(TMP) "\
-# 	"-jar $(gatk) "\
-# 	"-nt 6 "\
-# 	"-T GenotypeGVCFs "\
-# 	"-R $(ROOT_DIR)/$(REF_FNA) "\
-# 	"$(addprefix -V , $^) "\
-# 	"-o $(GVCF_DIR)/res.\$$SLURM_ARRAY_TASK_ID.vcf.gz --intervals" | \
-# 	./scripts/prepend-to-file.sh $(INTERVALS) $(RUNFILES)/make-vcf.txt
-# 	SLURM_Array -c $(RUNFILES)/make-vcf.txt \
-# 		--mail $(EMAIL) \
-# 		-r runs/MAKE-VCF \
-# 		-l $(GATK) \
-# 		--hold \
-# 		-m 100g \
-# 		-t 24:00:00 \
-# 		-P 6 \
-# 		-w $(ROOT_DIR)
-
-$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN)
-	for i in $$(cat $(INTERVALS)); \
-	do \
-		sbatch \
-		-D $(ROOT_DIR) \
-		-J MAKE-VCF \
-		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
-		-o $(VCF_RUN)/$*.out \
-		-e $(VCF_RUN)/$*.err \
-		scripts/make-VCF.sh \
-		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
-		   $(GATK) $$i $(addprefix -V , $^) | \
-		   cut -c 21- > $(GVCF_DIR)/res.jid; \
-		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
-	done;
-	sbatch \
-	-D $(ROOT_DIR) \
-	-J MAKE-VCF \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*.jid) \
-	-o $(VCF_RUN)/$*.out \
-	-e $(VCF_RUN)/$*.err \
-	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
-
-
-# runs/CONCAT-VCF/CONCAT-VCF.sh: 
-# 	echo 'vcf-concat $(shell ls $(GVCF_DIR)/res.*.vcf.gz | sort -t'.' -n -k2)'\
-# 	' | gzip -c > $(GVCF_DIR)/res.vcf.gz' > \
-# 	$(RUNFILES)/merge-vcf.txt
-# 	SLURM_Array -c $(RUNFILES)/merge-vcf.txt \
-# 		-r runs/CONCAT-VCF \
-# 		-l vcftools/0.1 \
-# 		-w $(ROOT_DIR)
-
-# $(VCF): $(GVCF) runs/MAKE-VCF/MAKE-VCF.sh
 
 help :
 	@echo
@@ -431,4 +396,4 @@ burn:
 
 
 
-.PHONY: all index help trim map bam dup vcf clean burn manifest
+.PHONY: all index help trim map bam dup vcf clean burn manifest validate
