@@ -69,11 +69,11 @@ if [ $# -lt 5 ]; then
 fi
 
 
-$BAM=$1
-$GVCF=$2
-$GATKVAR=$3
-$REFERENCE=$4
-$GATK=$5
+BAM=$1
+GVCF=$2
+GATKVAR=$3
+REFERENCE=$4
+GATK=$5
 
 CMD="java -Djava.io.tmpdir=$TMPDIR -jar $GATKVAR "
 CMD=$CMD"-T HaplotypeCaller "

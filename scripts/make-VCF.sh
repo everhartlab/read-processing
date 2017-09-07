@@ -26,11 +26,11 @@ if [ $# -lt 6 ]; then
 fi
 
 
-$PREFIX=$1
-$GATKVAR=$2
-$REFERENCE=$3
-$GATK=$4
-$INTERVAL=$5
+PREFIX=$1
+GATKVAR=$2
+REFERENCE=$3
+GATK=$4
+INTERVAL=$5
 # Slice the array from the 6th position to the end
 # http://stackoverflow.com/a/9057392
 SAMPLES="${@:6}"

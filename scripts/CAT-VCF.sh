@@ -21,8 +21,8 @@ if [ $# -lt 2 ]; then
 	exit
 fi
 
-$GVCF_DIR=$1
-$VCFTOOLS=$2
+GVCF_DIR=$1
+VCFTOOLS=$2
 
 CMD="vcf-concat $(ls $GVCF_DIR/res.*.vcf.gz | sort -t'.' -n -k2) | gzip -c > $GVCF_DIR/res.vcf.gz"
 
