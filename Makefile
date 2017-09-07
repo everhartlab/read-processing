@@ -135,9 +135,9 @@ $(BVL_RUN): $(RUNS)
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
 trim : $(TR_READS)
 map : index trim $(SAM) 
-bam : map $(BAM) $(FIXED) 
-dup : bam $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
-vcf : dup $(REF_IDX) $(GVCF) $(VCF)
+bam : map $(BAM) $(FIXED) $(DUPRMK)
+# dup : bam $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
+vcf : bam $(REF_IDX) $(GVCF) $(VCF)
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
 plot : $(PLOT_VAL)
 
