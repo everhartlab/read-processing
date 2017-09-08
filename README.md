@@ -22,9 +22,53 @@ make
 ```
 
 This will generate the genome index, sam files, bam files, g.vcf files
-and a final `GATK/res.vcf.gz`. You can find a manifest of the files
-generated from each sample in [manifest.txt] (Which will be updated randomly
-as I work out the bugs and test things).
+and a final `GATK/res.vcf.gz`. 
+
+### Makefile options
+
+You can find all of the makefile options by typing `make help`:
+
+```
+$ make help
+
+COMMANDS
+============
+
+all		makes everything: res.vcf.gz
+index		generate the bowtie2 index
+trim		trims reads with trimmomatic
+map		map reads with samtools
+bam		convert sam to bam, filter, and remove duplicates
+validate	run validation stats on the bam and sam files
+gvcf		create g.vcf files from HaplotypeCaller
+vcf		create vcf files (this is the longest step)
+
+help		show this message
+clean		remove all *.jid files
+cleanall	REMOVE ALL GENERATED FILES
+
+PARAMETERS
+============
+
+ROOT DIR  :  /work/everhartlab/kamvarz/test/read-processing
+TEMP DIR  :  $TMPDIR
+INDEX DIR :  bt2-index
+PREFIX    :  Ssc
+GENOME    :  genome/GCA_001857865.1_ASM185786v1_genomic.fna.gz genome/sclerotinia_sclerotiorum_mitochondria_2_contigs.fasta.gz
+READS     :  reads/SS.11.01 reads/SS.11.02
+
+Modules
+============
+
+BOWTIE   :  bowtie/2.2
+TRIMMOD  :  trimmomatic/0.36
+SAMTOOLS :  samtools/1.3
+VCFTOOLS :  vcftools/0.1
+PICARD   :  picard/2.9
+GATK     :  gatk/3.4
+
+```
+
 
 Adding steps to the workflow
 ----------------------------
