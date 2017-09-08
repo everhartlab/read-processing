@@ -23,8 +23,9 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-all: vcf 
 
+
+.PHONY: all index help trim map bam dup vcf clean burn manifest validate
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
@@ -93,6 +94,17 @@ PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
 BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
 
+
+all: $(VCF) 
+index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
+trim : $(TR_READS)
+map : index trim $(SAM) 
+bam : map $(BAM) $(FIXED) $(DUPRMK)
+# dup : bam $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
+vcf : bam $(REF_IDX) $(GVCF) $(VCF)
+validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
+plot : $(PLOT_VAL)
+
 joiner = reads/$(1)_1.fq.gz,\
 	reads/$(1)_2.fq.gz,\
 	$(SAM_DIR)/$(1).sam,\
@@ -132,14 +144,7 @@ $(VCF_RUN) \
 $(BVL_RUN): $(RUNS)
 	-mkdir -p $@
 
-index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
-trim : $(TR_READS)
-map : index trim $(SAM) 
-bam : map $(BAM) $(FIXED) $(DUPRMK)
-# dup : bam $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
-vcf : bam $(REF_IDX) $(GVCF) $(VCF)
-validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
-plot : $(PLOT_VAL)
+
 
 # Unzip the reference genome --------------------------------------------------
 $(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) $(RUNFILES)
@@ -396,4 +401,3 @@ burn:
 
 
 
-.PHONY: all index help trim map bam dup vcf clean burn manifest validate
