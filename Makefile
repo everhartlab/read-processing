@@ -116,7 +116,7 @@ $(BAM_DIR) \
 $(REF_DIR) \
 $(GVCF_DIR) \
 $(TRIM_DIR):
-	-mkdir $@
+	-mkdir -p $@
 
 $(INT_RUN) \
 $(BT2_RUN) \
@@ -130,7 +130,7 @@ $(DCT_RUN) \
 $(GCF_RUN) \
 $(VCF_RUN) \
 $(BVL_RUN): $(RUNS)
-	-mkdir $@
+	-mkdir -p $@
 
 index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
 trim : $(TR_READS)
