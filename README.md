@@ -13,9 +13,7 @@ Running the workflow
 --------------------
 
 To build your analysis, add your data to directories called **reads/** and
-**mitochondria_genome/**, edit variables in make like `ROOT_DIR`, and ensure
-that you have an environment variable called `$EMAIL` so you can be spammed
-every time the processes start and finish. In your shell, type:
+**genome/**. In your shell, type:
 
 ```
 make
