@@ -6,8 +6,7 @@ with bowtie2, samtools, picard, and gatk. Much of the analyses are based
 on @knausb's [bam processing workflow][brianflow], but tweaked for a
 haploid plant pathogen with an available genome (here we use it for 
 *Sclerotinia sclerotiorum*). **This is designed to run on the [HCC SLURM
-Cluster][HCC] using the [SLURM_Array][sarray] submission script in the
-users $PATH.** There are no guarantees that this will work anywhere else.
+Cluster][HCC].** There are no guarantees that this will work anywhere else.
 
 Running the workflow
 --------------------
@@ -76,11 +75,6 @@ or comfortable with Makefiles. Here are some helpful guides:
 
  - [Vince Buffalo's Makefiles in Bioinformatics][buffalo-make]
  - [Makefile Style Guide][make-style]
- 
-One of the things that gets kind of weird about this Makefile as compared to
-traditional makefiles is the fact that I wrote it in a really wonky sort of
-way where there are many dependencies for a single rule (This may change in
-the future). 
 
 Many of the recipes in the makefile take the form of:
 
@@ -167,19 +161,13 @@ Usage: sam-to-bam.sh <SAMDIR> <BAMDIR> <BASE> <SAMTOOLS>
 [HCC]: http://hcc.unl.edu/
 [sarray]: https://github.com/zkamvar/SLURM_Array
 [arrayjob]: https://slurm.schedmd.com/job_array.html
-
-Required directories
---------------------
-
- - **mitochondria_genome/**: A gzipped fasta file such as one from here:  ftp://ftp.broadinstitute.org/pub/annotation/fungi/sclerotinia_sclerotiorum/broad/genomes/sclerotinia_sclerotiorum/
- - **reads/**: Paired-end genomic data, in `\*_[12].fq.gz` format
  
  
  Generated directories
  ---------------------
  
- - runfiles/: shell scripts for pre-processing submission scripts (kept in this directory for posterity)
- - *bt2-index/*: genome index files generated via `make index` 
+ - *bt2-index/*: genome index files generated via `make index`
+ - *TRIM/*: home for the trimmed reads via trimmomatic
  - *SAMS/*: mapped sam files generated via `make map`
  - *BAMS/*: filtered bam files
  - *GVCF/*: `*.g.vcf` and `*.vcf` files generated via GATK
