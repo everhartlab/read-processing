@@ -28,7 +28,7 @@ PICARD=$3
 
 DICT=$(sed 's/fasta/dict/' <<< $REF)
 
-CMD="CreateSequenceDictionary REFERENCE=$REF OUTPUT=$DICT"
+CMD="picard CreateSequenceDictionary REFERENCE=$REF OUTPUT=$DICT"
 
 
 module load $SAMTOOLS
