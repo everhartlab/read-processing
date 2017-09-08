@@ -1,31 +1,24 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Makefile for analyzing mitochondrial genomes
+# Makefile for calling variants from whole genome sequences of *Sclerotinia
+# sclerotiorum* isolates against the whole genome.
 #
 # Author: Zhian N. Kamvar
-# Licesne: MIT
+# License: MIT
 #
 # This makefile contains rules and recipes for mapping, filtering, and
-# analyzing mitochondrial genomes of *Sclerotinia sclerotiorum* treated with
+# analyzing genomes of *Sclerotinia sclerotiorum* treated with
 # four different fungicides to assess the impact of fungicide stress on genomic
 # architecture.
 #
 # Since this makefile runs on a SLURM cluster, this is tailored specifically for
-# the HCC cluster in UNL. For this to work, the script SLURM_Array must be in 
-# your path. You can download it here: https://github.com/zkamvar/SLURM_Array
-#
-# The general pattern of this makefile is that each target takes two steps:
-#
-# 1. Run a bash script to collect the dependencies into separate lines of a
-#    text file. Each line will be an identical command to run in parallel
-#    across the cluster.
-# 2. The text file is submitted to the cluster with SLURM_Array
+# the HCC cluster in UNL.
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
 
-.PHONY: all index help trim map bam dup vcf clean burn manifest validate
+.PHONY: all index help trim map bam dup gvcf vcf clean burn manifest validate
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
@@ -72,8 +65,7 @@ VCFTOOLS := vcftools/0.1
 PICARD   := picard/2.9
 GATK     := gatk/3.4
 gatk     := \$$GATK
-PIC      := \$$PICARD
-EMAIL    := $$EMAIL # Note: this gets interpreted here, so be sure to define this in the $EMAIL envvar or here
+PIC      := \$$PICARD # This is only needed for picard versions < 2
 
 # Accounting for the expected output files
 REF_FNA  := $(addsuffix /genome.fasta,$(REF_DIR))
@@ -95,31 +87,21 @@ BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
 
 
-all: $(VCF) 
-index : $(FASTA) $(REF_FNA) $(INTERVALS) $(IDX) 
-trim : $(TR_READS)
-map : index trim $(SAM) 
-bam : map $(BAM) $(FIXED) $(DUPRMK)
-# dup : bam $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
-vcf : bam $(REF_IDX) $(GVCF) $(VCF)
+all: $(VCF) # Everything is dependent on the VCF output. 
+
+index : $(IDX) 
+trim  : $(TR_READS)
+map   : $(SAM)
+bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
+gvcf  : $(GVCF)
+vcf   : $(VCF)
+
+# Validate mapping by using samtools stats
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
-plot : $(PLOT_VAL)
-
-joiner = reads/$(1)_1.fq.gz,\
-	reads/$(1)_2.fq.gz,\
-	$(SAM_DIR)/$(1).sam,\
-	$(SAM_DIR)/$(1)_stats.txt.gz,\
-	$(BAM_DIR)/$(1)_nsort.bam,\
-	$(BAM_DIR)/$(1)_fixed.bam,\
-	$(BAM_DIR)/$(1)_fixed_stats.txt.gz,\
-	$(BAM_DIR)/$(1)_dupmrk.bam,\
-	$(BAM_DIR)/$(1)_dupmrk_stats.txt.gz,\
-	$(GVCF_DIR)/$(1).g.vcf.gz\\n
-
-MANIFEST := $(foreach x,$(patsubst reads/%,%, $(READS)),$(call joiner,$(x)))
+plot     : $(PLOT_VAL)
 
 
-
+# Create Output Directories ---------------------------------------------------
 $(RUNS) \
 $(RUNFILES) \
 $(IDX_DIR) \
@@ -130,6 +112,7 @@ $(GVCF_DIR) \
 $(TRIM_DIR):
 	-mkdir -p $@
 
+# Create Run Log Directories --------------------------------------------------
 $(INT_RUN) \
 $(BT2_RUN) \
 $(TRM_RUN) \
@@ -145,6 +128,7 @@ $(BVL_RUN): $(RUNS)
 	-mkdir -p $@
 
 
+# ==== GENOME PROCESSING ======================================================
 
 # Unzip the reference genome --------------------------------------------------
 $(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) $(RUNFILES)
@@ -187,7 +171,8 @@ $(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 	   $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE) | \
 	   cut -c 21- > $@ 
 
-$(IDX) : scripts/make-index.sh $(FASTA) $(BT2_RUN)/jobid.txt
+# Accounting for BOWTIE2 index files
+$(IDX) : $(BT2_RUN)/jobid.txt
 
 # Quality trimming the reads --------------------------------------------------
 $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TRM_RUN)
@@ -198,10 +183,12 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-e $(TRM_RUN)/$*.err \
 	scripts/trim-reads.sh $* $(@D) $(TRIMMOD) | cut -c 21- > $(@D)/$*.jid
 
-$(TRM_RUN)/%.out : $(TRIM_DIR)/%_1P.fq.gz
+# Accounting for second read
+$(TRM_DIR)/%_2P.fq.gz : $(TRIM_DIR)/%_1P.fq.gz
+	touch $@
 
 # Mapping the reads -----------------------------------------------------------
-$(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/jobid.txt | $(SAM_DIR) $(MAP_RUN) 
+$(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
@@ -211,16 +198,6 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(BT2_RUN)/j
 	scripts/make-alignment.sh \
 	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE) | \
 	   cut -c 21- > $@.jid
-
-# Validating the mapping ------------------------------------------------------
-$(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh | $(SVL_RUN)
-	sbatch \
-	-D $(ROOT_DIR) \
-	-J VALIDATE-READS \
-	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
-	-o $(SVL_RUN)/$*.out \
-	-e $(SVL_RUN)/$*.err \
-	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 # Sorting and Converting to BAM files -----------------------------------------
 $(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(BAM_RUN)
@@ -244,16 +221,6 @@ $(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh
 	scripts/add-MD-tag.sh $< $(SAMTOOLS) $(REF_FNA) | \
 	   cut -c 21- > $@.jid
 
-# Validating the bamfiles -----------------------------------------------------
-$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)/%_fixed.bam scripts/validate-sam.sh | $(BVL_RUN)
-	sbatch \
-	-D $(ROOT_DIR) \
-	-J VALIDATE-BAMS \
-	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
-	-o $(BVL_RUN)/$*.out \
-	-e $(BVL_RUN)/$*.err \
-	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
-
 # Marking optical duplicates with picard --------------------------------------
 $(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed.bam scripts/mark-duplicates.sh | $(MKD_RUN)
 	sbatch \
@@ -263,16 +230,6 @@ $(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed.bam scripts/mark-duplicates.sh | $(
 	-o $(MKD_RUN)/$*.out \
 	-e $(MKD_RUN)/$*.err \
 	scripts/mark-duplicates.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
-
-# Validating the optical duplicate filtering ----------------------------------
-$(BAM_DIR)/%_dupmrk_stats.txt.gz : $(BAM_DIR)/%_dupmrk.bam scripts/validate-sam.sh | $(DVL_RUN)
-	sbatch \
-	-D $(ROOT_DIR) \
-	-J VALIDATE-BAMS \
-	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
-	-o $(DVL_RUN)/$*.out \
-	-e $(DVL_RUN)/$*.err \
-	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 # Make the GVCF files to use for variant calling later ------------------------
 $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
@@ -310,8 +267,37 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
 
 
+# ==== VALIDATION STEPS =======================================================
 
+# Validating the mapping ------------------------------------------------------
+$(SAM_DIR)/%_stats.txt.gz : $(SAM_DIR)/%.sam scripts/validate-sam.sh | $(SVL_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VALIDATE-READS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(SVL_RUN)/$*.out \
+	-e $(SVL_RUN)/$*.err \
+	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
+# Validating the bamfiles -----------------------------------------------------
+$(BAM_DIR)/%_fixed_stats.txt.gz : $(BAM_DIR)/%_fixed.bam scripts/validate-sam.sh | $(BVL_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VALIDATE-BAMS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(BVL_RUN)/$*.out \
+	-e $(BVL_RUN)/$*.err \
+	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
+
+# Validating the optical duplicate filtering ----------------------------------
+$(BAM_DIR)/%_dupmrk_stats.txt.gz : $(BAM_DIR)/%_dupmrk.bam scripts/validate-sam.sh | $(DVL_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VALIDATE-BAMS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
+	-o $(DVL_RUN)/$*.out \
+	-e $(DVL_RUN)/$*.err \
+	scripts/validate-sam.sh $< $(SAMTOOLS) | cut -c 21- > $@.jid
 
 
 runs/GET-DEPTH/GET-DEPTH.sh: $(DUPMRK)
