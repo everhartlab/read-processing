@@ -15,16 +15,13 @@
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-
-
-.PHONY: all index help trim map bam dup gvcf vcf clean burn manifest validate
+.PHONY: all index help trim map bam gvcf vcf clean cleanall validate
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
 FASTA    := $(wildcard $(FAST_DIR)/*.f*a.gz)
 
-# Reads. Make sure your PE reads end with _1.fq.gz
+# Reads. Make sure your PE reads end with _1.fq.gz and _2.fq.gz
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
 RFILES   := $(addsuffix _1.fq.gz, $(READS))
 
@@ -42,7 +39,6 @@ GVCF_DIR := GVCF
 REF_DIR  := REF
 
 # Define run directories
-
 RUNS     := runs
 INT_RUN  := $(RUNS)/GATK-INTERVALS
 BT2_RUN  := $(RUNS)/BOWTIE2-BUILD
@@ -87,7 +83,7 @@ BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
 
 
-all: $(VCF) # Everything is dependent on the VCF output. 
+all   : $(VCF) # Everything is dependent on the VCF output. 
 
 index : $(IDX) 
 trim  : $(TR_READS)
@@ -98,12 +94,10 @@ vcf   : $(VCF)
 
 # Validate mapping by using samtools stats
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
-plot     : $(PLOT_VAL)
+# plot     : $(PLOT_VAL)
 
-
-# Create Output Directories ---------------------------------------------------
+# Create Output Directories 
 $(RUNS) \
-$(RUNFILES) \
 $(IDX_DIR) \
 $(SAM_DIR) \
 $(BAM_DIR) \
@@ -112,7 +106,7 @@ $(GVCF_DIR) \
 $(TRIM_DIR):
 	-mkdir -p $@
 
-# Create Run Log Directories --------------------------------------------------
+# Create Run Log Directories 
 $(INT_RUN) \
 $(BT2_RUN) \
 $(TRM_RUN) \
@@ -336,53 +330,53 @@ help :
 	@echo "COMMANDS"
 	@echo "============"
 	@echo
-	@echo "all	almost all -- Make res.n.vcf.gz files"
-	@echo "concat	concatenate res.n.vcf.gz files (to run after all)"
-	@echo "index	generate the bowtie2 index"
-	@echo "map	map reads and validate the SAM files"
-	@echo "bam	convert sam to bam and filter"
-	@echo "dup	deduplicate bam files and validate"
-	@echo "vcf	create g.vcf and vcf files (this is the longest step)" 
+	@echo "all		makes everything: res.vcf.gz"
+	@echo "index		generate the bowtie2 index"
+	@echo "trim		trims reads with trimmomatic"
+	@echo "map		map reads with samtools"
+	@echo "bam		convert sam to bam, filter, and remove duplicates"
+	@echo "validate	run validation stats on the bam and sam files"
+	@echo "gvcf		create g.vcf files from HaplotypeCaller"
+	@echo "vcf		create vcf files (this is the longest step)" 
 	@echo
-	@echo "help	show this message" 
-	@echo "burn	REMOVE ALL GENERATED FILES"
-	@echo "manifest	create a manifest of all generated files per read"
-	@echo "runclean.JOB_NAME	clean runfiles"
+	@echo "help		show this message" 
+	@echo "clean		remove all *.jid files"
+	@echo "cleanall	REMOVE ALL GENERATED FILES"
 	@echo
 	@echo "PARAMETERS"
 	@echo "============"
 	@echo
-	@echo "EMAIL     : " $(EMAIL)
 	@echo "ROOT DIR  : " $(ROOT_DIR)
 	@echo "TEMP DIR  : " $(TMP)
 	@echo "INDEX DIR : " $(IDX_DIR)
 	@echo "PREFIX    : " $(PREFIX)
-	@echo "SAM DIR   : " $(SAM_DIR)
-	@echo "BAM DIR   : " $(BAM_DIR)
 	@echo "GENOME    : " $(FASTA)
-	@echo "RUNFILES  : " $(RUNFILES)
 	@echo "READS     : " $(READS)
-	@echo "TRIMMED READS     : " $(TR_READS)
+	@echo
+	@echo "Modules"
+	@echo "============"
+	@echo
+	@echo "BOWTIE   : " $(BOWTIE)
+	@echo "TRIMMOD  : " $(TRIMMOD)
+	@echo "SAMTOOLS : " $(SAMTOOLS)
+	@echo "VCFTOOLS : " $(VCFTOOLS)
+	@echo "PICARD   : " $(PICARD)
+	@echo "GATK     : " $(GATK)
 	@echo
 
-manifest :
-	printf "READ1,"\
-	"READ2,"\
-	"SAM,"\
-	"SAM VALIDATION,"\
-	"SORTED BAM,"\
-	"FIXED BAM,"\
-	"FIXED BAM VALIDATION,"\
-	"MARKED DUPLICATES BAM,"\
-	"MARKED DUPLICATES BAM VALIDATION,"\
-	"GVCF FILE\n" > manifest.csv
-	printf "$(MANIFEST)" >> manifest.csv
+cleanall:
+	$(RM) -r $(TRIM_DIR) \
+	         $(IDX_DIR) \
+	         $(SAM_DIR) \
+	         $(BAM_DIR) \
+	         $(GVCF_DIR) runs \
+	         $(REF_DIR) \
+	         $(RUNFILES)
 
-runclean.%:
-	$(RM) -r runs/$*
-
-burn:
-	$(RM) -r $(TRIM_DIR) $(IDX_DIR) $(SAM_DIR) $(BAM_DIR) $(GVCF_DIR) runs $(REF_DIR) $(RUNFILES)
-
-
-
+clean:
+	$(RM) $(IDX_DIR)/*.jid \
+		  $(SAM_DIR)/*.jid \
+		  $(BAM_DIR)/*.jid \
+		  $(REF_DIR)/*.jid \
+		  $(GVCF_DIR)/*.jid \
+		  $(TRIM_DIR)/*.jid
