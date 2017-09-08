@@ -175,6 +175,9 @@ $(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN)
 $(IDX) : $(BT2_RUN)/jobid.txt
 
 # Quality trimming the reads --------------------------------------------------
+# 	Note: the second read is implied here. Because of the way makefiles
+# 	work, it would attempt to run this twice to account for the second
+# 	read if I were to include it in here. 
 $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TRM_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
@@ -182,10 +185,6 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-o $(TRM_RUN)/$*.out \
 	-e $(TRM_RUN)/$*.err \
 	scripts/trim-reads.sh $* $(@D) $(TRIMMOD) | cut -c 21- > $(@D)/$*.jid
-
-# Accounting for second read
-$(TRM_DIR)/%_2P.fq.gz : $(TRIM_DIR)/%_1P.fq.gz
-	touch $@
 
 # Mapping the reads -----------------------------------------------------------
 $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
