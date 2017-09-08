@@ -28,7 +28,7 @@ all: vcf
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
-FASTA    := $(wildcard $(FAST_DIR)/*.fasta.gz)
+FASTA    := $(wildcard $(FAST_DIR)/*.f*a.gz)
 
 # Reads. Make sure your PE reads end with _1.fq.gz
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
@@ -75,7 +75,7 @@ PIC      := \$$PICARD
 EMAIL    := $$EMAIL # Note: this gets interpreted here, so be sure to define this in the $EMAIL envvar or here
 
 # Accounting for the expected output files
-REF_FNA  := $(patsubst $(FAST_DIR)/%.fasta.gz,$(REF_DIR)/%.fasta, $(FASTA))
+REF_FNA  := $(addsuffix /genome.fasta,$(REF_DIR))
 REF_IDX  := $(patsubst %.fasta,%.dict, $(REF_FNA))
 INTERVALS:= $(patsubst %.fasta,%.intervals.txt, $(REF_FNA))
 REFSIZES := $(patsubst %.fasta,%.sizes.txt, $(REF_FNA))
@@ -142,7 +142,7 @@ validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
 plot : $(PLOT_VAL)
 
 # Unzip the reference genome --------------------------------------------------
-$(REF_DIR)/%.fasta : $(FAST_DIR)/%.fasta.gz | $(REF_DIR) $(RUNFILES)
+$(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) $(RUNFILES)
 	zcat $^ | sed -r 's/[ ,]+/_/g' > $@
 
 # Create dictionary for reference
@@ -161,7 +161,7 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py s
 	-J GATK-INTERVALS \
 	-o $(INT_RUN)/GATK-INTERVALS.out \
 	-e $(INT_RUN)/GATK-INTERVALS.err \
-	scripts/make-GATK-intervals.sh $< 10000 $@ | cut -c 21- > $@.jid
+	scripts/make-GATK-intervals.sh $< 100000 $@ | cut -c 21- > $@.jid
 
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
 	sbatch \
