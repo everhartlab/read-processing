@@ -246,12 +246,13 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 
 # Call variants in separate windows and concatenate ---------------------------
 $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN)
-	sleep 10 # to allow the intervals to be computed
+	sleep 10 # to allow the intervals enough time to be computed
+	count=0; \
 	for i in $$(cat $(INTERVALS)); \
 	do \
 		sbatch \
 		-D $(ROOT_DIR) \
-		-J MAKE-VCF \
+		-J MAKE-VCF-$$count++ \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
 		-o $(VCF_RUN)/$*.out \
 		-e $(VCF_RUN)/$*.err \
