@@ -138,8 +138,8 @@ $(REF_DIR)/%.dict : $(REF_DIR)/%.fasta | $(DCT_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-GATK-REF \
-	-o $(INT_RUN)/GATK-REF.out \
-	-e $(INT_RUN)/GATK-REF.err \
+	-o $(DCT_RUN)/GATK-REF.out \
+	-e $(DCT_RUN)/GATK-REF.err \
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	scripts/make-GATK-ref-dict.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
 		
