@@ -36,6 +36,7 @@ SAM_DIR  := SAMS
 BAM_DIR  := BAMS
 GVCF_DIR := GVCF
 REF_DIR  := REF
+CHR_JOBS := GVCF/CHROM_JOBS
 
 # Define run directories
 RUNS     := runs
@@ -102,10 +103,8 @@ $(SAM_DIR) \
 $(BAM_DIR) \
 $(REF_DIR) \
 $(GVCF_DIR) \
-$(TRIM_DIR):
-	-mkdir -p $@
-
-# Create Run Log Directories 
+$(CHR_JOBS) \
+$(TRIM_DIR) \
 $(INT_RUN) \
 $(BT2_RUN) \
 $(TRM_RUN) \
@@ -117,7 +116,7 @@ $(DVL_RUN) \
 $(DCT_RUN) \
 $(GCF_RUN) \
 $(VCF_RUN) \
-$(BVL_RUN): $(RUNS)
+$(BVL_RUN)
 	-mkdir -p $@
 
 
@@ -245,22 +244,23 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
 
 # Call variants in separate windows and concatenate ---------------------------
-$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN)
+# 	This is a slightly difficult task because we don't want to flood the 
+#	scheduler with so many jobs. Plus, these jobs need so many resources that
+#	they end up running one at a time. So, we split these jobs by chromosome and
+#	create the contingency that all of the GVCF jobs must be finished before the
+# 	windows can even be submitted. 
+$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
 	count=0; \
-	for i in $$(cat $(INTERVALS)); \
+	for i in $$(grep '>' $(REF_FNA) | sed 's/>//'); \
 	do \
 		sbatch \
 		-D $(ROOT_DIR) \
-		-J MAKE-VCF-$$count++ \
+		-J CHROM-$$count++ \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
-		-o $(VCF_RUN)/$*.out \
-		-e $(VCF_RUN)/$*.err \
-		scripts/make-VCF.sh \
-		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
-		   $(GATK) $$i $(addprefix -V , $^) | \
-		   cut -c 21- > $(GVCF_DIR)/res.jid; \
-		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
+		-o $(CHR_JOBS)/$*.out \
+		-e $(CHR_JOBS)/$*.err \
+		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jid | cut -c 21- > $(CHR_JOBS)/$$i.jid\
 	done;
 	sbatch \
 	-D $(ROOT_DIR) \
@@ -269,6 +269,24 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN
 	-o $(VCF_RUN)/$*.out \
 	-e $(VCF_RUN)/$*.err \
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
+
+# Call variants in intervals within a given chromosome
+$(CHR_JOBS)/%.jid :
+	count=0; \
+	for i in $$(grep $* $(INTERVALS)); \
+	do \
+		sbatch \
+		-D $(ROOT_DIR) \
+		-J MAKE-VCF-$$count \
+		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
+		-o $(VCF_RUN)/$*-$$count.out \
+		-e $(VCF_RUN)/$*-$$((count++)).err \
+		scripts/make-VCF.sh \
+		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
+		   $(GATK) $$i $(addprefix -V , $(GVCF)) | \
+		   cut -c 21- > $(GVCF_DIR)/res.jid; \
+		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
+	done
 
 
 # ==== VALIDATION STEPS =======================================================
