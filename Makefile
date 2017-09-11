@@ -124,8 +124,14 @@ $(BVL_RUN): $(RUNS)
 # ==== GENOME PROCESSING ======================================================
 
 # Unzip the reference genome --------------------------------------------------
-$(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) 
-	zcat $^ | sed -r 's/[ ,]+/_/g' > $@
+$(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) $(RUNS) 
+	-mkdir -p runs/CAT-GENOME/
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J CAT-GENOME \
+	-o runs/CAT-GENOME/CAT-GENOME.out \
+	-e runs/CAT-GENOME/CAT-GENOME.out \
+	scripts/cat-genome.sh $@ $^ | cut -c 21- > $@.jid
 
 # Create dictionary for reference
 $(REF_DIR)/%.dict : $(REF_DIR)/%.fasta | $(DCT_RUN)
@@ -134,6 +140,7 @@ $(REF_DIR)/%.dict : $(REF_DIR)/%.fasta | $(DCT_RUN)
 	-J MAKE-GATK-REF \
 	-o $(INT_RUN)/GATK-REF.out \
 	-e $(INT_RUN)/GATK-REF.err \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	scripts/make-GATK-ref-dict.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
 		
 # Creates intervals for the final step ----------------------------------------
@@ -143,6 +150,7 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py s
 	-J GATK-INTERVALS \
 	-o $(INT_RUN)/GATK-INTERVALS.out \
 	-e $(INT_RUN)/GATK-INTERVALS.err \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	scripts/make-GATK-intervals.sh $< 100000 $@ | cut -c 21- > $@.jid
 
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
@@ -151,17 +159,19 @@ $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scrip
 	-J GATK-SIZES \
 	-o $(INT_RUN)/GATK-SIZES.out \
 	-e $(INT_RUN)/GATK-SIZES.err \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	scripts/make-GATK-intervals.sh $< 0 $@ | cut -c 21- > $@.jid
 
 # Indexing the genome for Bowtie2 ---------------------------------------------
-$(BT2_RUN)/jobid.txt: scripts/make-index.sh $(REF_FNA) | $(IDX_DIR) $(BT2_RUN) 
+$(BT2_RUN)/jobid.txt: $(REF_FNA) scripts/make-index.sh | $(IDX_DIR) $(BT2_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J BOWTIE2-BUILD \
+	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
 	scripts/make-index.sh \
-	   $(REF_FNA) $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE) | \
+	   $< $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE) | \
 	   cut -c 21- > $@ 
 
 # Accounting for BOWTIE2 index files
