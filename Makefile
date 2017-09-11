@@ -252,7 +252,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
 	count=0; \
-	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-9); \
+	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-8); \
 	do \
 		sbatch \
 		-D $(ROOT_DIR) \
