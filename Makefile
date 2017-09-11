@@ -246,6 +246,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 
 # Call variants in separate windows and concatenate ---------------------------
 $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh $(VCF_RUN)
+	sleep 10 # to allow the intervals to be computed
 	for i in $$(cat $(INTERVALS)); \
 	do \
 		sbatch \
