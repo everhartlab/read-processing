@@ -252,15 +252,15 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
 	count=0; \
-	for i in $$(grep '>' $(REF_FNA) | sed 's/>//'); \
+	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-9); \
 	do \
 		sbatch \
 		-D $(ROOT_DIR) \
-		-J CHROM-$$count++ \
+		-J CHROM-$$((count++)) \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
-		-o $(CHR_JOBS)/$*.out \
-		-e $(CHR_JOBS)/$*.err \
-		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jid | cut -c 21- > $(CHR_JOBS)/$$i.jid\
+		-o $(CHR_JOBS)/$$i.out \
+		-e $(CHR_JOBS)/$$i.err \
+		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
 	sbatch \
 	-D $(ROOT_DIR) \

@@ -20,11 +20,7 @@ if [ $# -lt 1 ]; then
 	echo
 	echo "Usage:"
 	echo
-	echo "	bash chromosome-jobs.sh CHROMOSOME_JOBS/chromosomeXXX.jobid 
-	echo
-	echo "	<fasta> - a fasta file of the reference"
-	echo "	<window> - an integer specifying the window size"
-	echo "	<outfile> - the name of a text file to write the windows"
+	echo "	bash chromosome-jobs.sh CHROMOSOME_JOBS/chromosomeXXX.jobid" 
 	echo
 	exit
 fi
