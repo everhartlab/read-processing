@@ -260,7 +260,7 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
 		-o $(CHR_JOBS)/$$i.out \
 		-e $(CHR_JOBS)/$$i.err \
-		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
+		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jobid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
 	sbatch \
 	-D $(ROOT_DIR) \
