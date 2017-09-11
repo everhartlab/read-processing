@@ -271,7 +271,7 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
 
 # Call variants in intervals within a given chromosome
-$(CHR_JOBS)/%.jid :
+$(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
 	count=0; \
 	for i in $$(grep $* $(INTERVALS)); \
 	do \
@@ -287,6 +287,7 @@ $(CHR_JOBS)/%.jid :
 		   cut -c 21- > $(GVCF_DIR)/res.jid; \
 		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
 	done
+	cp $< $@
 
 
 # ==== VALIDATION STEPS =======================================================
