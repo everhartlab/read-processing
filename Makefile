@@ -116,7 +116,7 @@ $(DVL_RUN) \
 $(DCT_RUN) \
 $(GCF_RUN) \
 $(VCF_RUN) \
-$(BVL_RUN)
+$(BVL_RUN) :
 	-mkdir -p $@
 
 
