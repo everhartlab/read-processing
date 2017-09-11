@@ -29,7 +29,6 @@ RFILES   := $(addsuffix _1.fq.gz, $(READS))
 TMP      := \$$TMPDIR
 ROOT_DIR := $(patsubst /lustre/%,/%,$(CURDIR)) 
 ROOT_DIR := $(strip $(ROOT_DIR))
-RUNFILES := runfiles
 IDX_DIR  := bt2-index
 PREFIX   := Ssc # prefix for the bowtie2 index
 TRIM_DIR := TRIM
@@ -125,7 +124,7 @@ $(BVL_RUN): $(RUNS)
 # ==== GENOME PROCESSING ======================================================
 
 # Unzip the reference genome --------------------------------------------------
-$(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) $(RUNFILES)
+$(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) 
 	zcat $^ | sed -r 's/[ ,]+/_/g' > $@
 
 # Create dictionary for reference
@@ -370,8 +369,7 @@ cleanall:
 	         $(SAM_DIR) \
 	         $(BAM_DIR) \
 	         $(GVCF_DIR) runs \
-	         $(REF_DIR) \
-	         $(RUNFILES)
+	         $(REF_DIR) 
 
 clean:
 	$(RM) $(IDX_DIR)/*.jid \
