@@ -36,7 +36,7 @@ SAM_DIR  := SAMS
 BAM_DIR  := BAMS
 GVCF_DIR := GVCF
 REF_DIR  := REF
-CHR_JOBS := GVCF/CHROM_JOBS
+
 
 # Define run directories
 RUNS     := runs
@@ -52,6 +52,7 @@ DVL_RUN  := $(RUNS)/VALIDATE-DUPS
 DCT_RUN  := $(RUNS)/GATK-REF
 GCF_RUN  := $(RUNS)/MAKE-GVCF
 VCF_RUN  := $(RUNS)/MAKE-VCF
+CHR_JOBS := $(RUNS)/CHROM_JOBS
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -244,11 +245,17 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
 
 # Call variants in separate windows and concatenate ---------------------------
+#
 # 	This is a slightly difficult task because we don't want to flood the 
 #	scheduler with so many jobs. Plus, these jobs need so many resources that
 #	they end up running one at a time. So, we split these jobs by chromosome and
 #	create the contingency that all of the GVCF jobs must be finished before the
 # 	windows can even be submitted. 
+#
+#	NOTE:
+# 	- This assumes that the first 8 characters of your FASTA headers are unique
+# 	  identifiers. If not, change the `cut -c 1-8` command to the proper range
+#
 $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
 	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-8); \
@@ -270,7 +277,13 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 	-e $(VCF_RUN)/cat-vcf.err \
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
 
-# Call variants in intervals within a given chromosome
+# ---- Call variants in intervals within a given chromosome -------------------
+#
+#	This works by taking the chromosome name and getting all the intervals
+#	within the interval file. The error and out files will be the chromosome
+#	identifier with the range.
+#	The resulting vcf.gz file will be res.JOBID.vcf.gz
+#
 $(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
 	for i in $$(grep $* $(INTERVALS)); \
 	do \
