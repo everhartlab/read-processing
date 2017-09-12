@@ -272,7 +272,6 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 
 # Call variants in intervals within a given chromosome
 $(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
-	count=0; \
 	for i in $$(grep $* $(INTERVALS)); \
 	do \
 		suffix=$$(awk -F: '{print $$2}' <<< $$i); \
