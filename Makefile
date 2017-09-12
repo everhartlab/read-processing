@@ -261,6 +261,7 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 		-e $(CHR_JOBS)/$$i.err \
 		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jobid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
+	sleep 10;
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-VCF \
@@ -274,12 +275,13 @@ $(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
 	count=0; \
 	for i in $$(grep $* $(INTERVALS)); \
 	do \
+		suffix=$$(awk -F: '{print $$2}' <<< $$i); \
 		sbatch \
 		-D $(ROOT_DIR) \
-		-J MAKE-VCF-$$count \
+		-J $*-$$suffix \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
-		-o $(VCF_RUN)/$*-$$count.out \
-		-e $(VCF_RUN)/$*-$$(( count=count+1 )).err \
+		-o $(VCF_RUN)/$*-$$suffix.out \
+		-e $(VCF_RUN)/$*-$$suffix.err \
 		scripts/make-VCF.sh \
 		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
 		   $(GATK) $$i $(addprefix -V , $(GVCF)) | \
