@@ -258,7 +258,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 # 	- This assumes that the first 8 characters of your FASTA headers are unique
 # 	  identifiers. If not, change the `cut -c 1-8` command to the proper range
 #
-$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN) $(CHR_JOBS) $(CHR_RUN)
+$(GVCF_DIR)/res.vcf.jid : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN) $(CHR_JOBS) $(CHR_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
 	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-8); \
 	do \
@@ -270,15 +270,23 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 		-e $(CHR_RUN)/$$i.err \
 		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jobid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
-	sleep 10;
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-VCF \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*.jid) \
 	-o $(VCF_RUN)/cat-vcf.out \
 	-e $(VCF_RUN)/cat-vcf.err \
-	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
+	--hold \
+	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) | cut -c 21- > $@
 
+$(VCF) : $(GVCF_DIR)/res.vcf.jid
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VCF \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(CHR_JOBS)/*jid) \
+	-o $(VCF_RUN)/release-vcf.out \
+	-e $(VCF_RUN)/release-vcf.err \
+	scripts/release-job.sh 10 $<
+	
 # ---- Call variants in intervals within a given chromosome -------------------
 #
 #	This works by taking the chromosome name and getting all the intervals
@@ -299,8 +307,7 @@ $(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
 		scripts/make-VCF.sh \
 		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
 		   $(GATK) $$i $(addprefix -V , $(GVCF)) | \
-		   cut -c 21- > $(GVCF_DIR)/res.jid; \
-		mv $(GVCF_DIR)/res.jid $(GVCF_DIR)/res.$$(cat $(GVCF_DIR)/res.jid).jid; \
+		   cut -c 21- > $(GVCF_DIR)/res.$*-$$suffix.jid; \
 	done
 	cp $< $@
 
