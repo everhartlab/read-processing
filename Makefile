@@ -251,12 +251,11 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 # 	windows can even be submitted. 
 $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
-	count=0; \
 	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-8); \
 	do \
 		sbatch \
 		-D $(ROOT_DIR) \
-		-J CHROM-$$((count++)) \
+		-J $$i \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
 		-o $(CHR_JOBS)/$$i.out \
 		-e $(CHR_JOBS)/$$i.err \
@@ -266,8 +265,8 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 	-D $(ROOT_DIR) \
 	-J MAKE-VCF \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*.jid) \
-	-o $(VCF_RUN)/$*.out \
-	-e $(VCF_RUN)/$*.err \
+	-o $(VCF_RUN)/cat-vcf.out \
+	-e $(VCF_RUN)/cat-vcf.err \
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS)
 
 # Call variants in intervals within a given chromosome
@@ -280,7 +279,7 @@ $(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
 		-J MAKE-VCF-$$count \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
 		-o $(VCF_RUN)/$*-$$count.out \
-		-e $(VCF_RUN)/$*-$$((count++)).err \
+		-e $(VCF_RUN)/$*-$$(( count=count+1 )).err \
 		scripts/make-VCF.sh \
 		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
 		   $(GATK) $$i $(addprefix -V , $(GVCF)) | \
