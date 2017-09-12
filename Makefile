@@ -35,6 +35,7 @@ TRIM_DIR := TRIM
 SAM_DIR  := SAMS
 BAM_DIR  := BAMS
 GVCF_DIR := GVCF
+CHR_JOBS := GVCF/CHROM_JOBS
 REF_DIR  := REF
 
 
@@ -52,7 +53,7 @@ DVL_RUN  := $(RUNS)/VALIDATE-DUPS
 DCT_RUN  := $(RUNS)/GATK-REF
 GCF_RUN  := $(RUNS)/MAKE-GVCF
 VCF_RUN  := $(RUNS)/MAKE-VCF
-CHR_JOBS := $(RUNS)/CHROM_JOBS
+CHR_RUN  := $(RUNS)/CHROM_RUN
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -115,6 +116,7 @@ $(BAM_RUN) \
 $(MKD_RUN) \
 $(DVL_RUN) \
 $(DCT_RUN) \
+$(CHR_RUN) \
 $(GCF_RUN) \
 $(VCF_RUN) \
 $(BVL_RUN) :
@@ -256,7 +258,7 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 # 	- This assumes that the first 8 characters of your FASTA headers are unique
 # 	  identifiers. If not, change the `cut -c 1-8` command to the proper range
 #
-$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN)
+$(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN) $(CHR_JOBS) $(CHR_RUN)
 	sleep 10 # to allow the intervals enough time to be computed
 	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-8); \
 	do \
@@ -264,8 +266,8 @@ $(VCF) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/c
 		-D $(ROOT_DIR) \
 		-J $$i \
 		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
-		-o $(CHR_JOBS)/$$i.out \
-		-e $(CHR_JOBS)/$$i.err \
+		-o $(CHR_RUN)/$$i.out \
+		-e $(CHR_RUN)/$$i.err \
 		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jobid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
 	sleep 10;
