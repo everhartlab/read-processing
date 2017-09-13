@@ -100,6 +100,9 @@ graph.dot :
 %.pdf : %.dot scripts/color-graph.sh
 	cat $< | ./scripts/color-graph.sh SS | dot -Tpdf -o $@ 
 
+%.png : %.dot scripts/color-graph.sh
+	cat $< | ./scripts/color-graph.sh SS | dot -Tpng -o $@ 
+
 # Validate mapping by using samtools stats
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
 # plot     : $(PLOT_VAL)

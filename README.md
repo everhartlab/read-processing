@@ -66,6 +66,20 @@ GATK     :  gatk/3.4
 
 ```
 
+Workflow
+--------
+
+A workflow with two samples and two genome files (full and mitochondria) would
+look like this:
+
+!["a graph representation of the workflow of make all"](graph.png)
+
+- Blue nodes: user-supplied files
+- Grey nodes: makefile-generated folders
+- Pink nodes: derived files per sample
+- Purple/periwinkle nodes: indexed genomic data
+- brown nodes: scripts in the scripts directory
+
 
 Adding steps to the workflow
 ----------------------------
