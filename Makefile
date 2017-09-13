@@ -281,14 +281,14 @@ $(GVCF_DIR)/res.vcf.jid :
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) | cut -c 21- > $@
 
 $(VCF) : $(CHR_JOBS)
-	printf '#!/usr/bin/env bash\nmake $(GVCF_DIR)/res.vcf.jid\n' > $(GVCF_DIR)/schedule.vcf
+	printf '#!/usr/bin/env bash\nmake $(GVCF_DIR)/res.vcf.jid\n' > $(GVCF_DIR)/schedule.vcf.jid
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VCF-SCHEDULE \
 	-o $(VCF_RUN)/schedule-vcf.out \
 	-e $(VCF_RUN)/schedule-vcf.err \
 	--hold \
-	$(GVCF_DIR)/schedule.vcf | cut -c 21- > $(GVCF_DIR)/res.vcf.tmp.jid
+	$(GVCF_DIR)/schedule.vcf.jid | cut -c 21- > $(GVCF_DIR)/res.vcf.tmp.jid
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VCF \
@@ -440,4 +440,6 @@ clean:
 		  $(BAM_DIR)/*.jid \
 		  $(REF_DIR)/*.jid \
 		  $(GVCF_DIR)/*.jid \
-		  $(TRIM_DIR)/*.jid
+	          $(CHROM_DIR)/*.jid \
+		  $(TRIM_DIR)/*.jid \
+	          $(GVCF_DIR)/res.*.vcf.gz
