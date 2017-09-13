@@ -95,10 +95,10 @@ gvcf  : $(GVCF)
 vcf   : $(VCF)
 
 graph.dot :
-	$(MAKE) -Bnd | make2graph -b | ./scripts/color-graph.sh > graph.dot
+	$(MAKE) -Bnd | make2graph -b > graph.dot
 
-%.pdf : %.dot
-	dot -Tpdf -o $@ $<
+%.pdf : %.dot scripts/color-graph.sh
+	cat $< | ./scripts/color-graph.sh SS | dot -Tpdf -o $@ 
 
 # Validate mapping by using samtools stats
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
