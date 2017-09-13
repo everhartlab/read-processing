@@ -15,7 +15,7 @@
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.PHONY: all index help trim map bam gvcf vcf clean cleanall validate
+.PHONY: all index help trim map bam gvcf vcf clean cleanall validate 
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
@@ -93,6 +93,12 @@ map   : $(SAM)
 bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
 gvcf  : $(GVCF)
 vcf   : $(VCF)
+
+graph.dot :
+	$(MAKE) -Bnd | make2graph -b | ./scripts/color-graph.sh > graph.dot
+
+%.pdf : %.dot
+	dot -Tpdf -o $@ $<
 
 # Validate mapping by using samtools stats
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
