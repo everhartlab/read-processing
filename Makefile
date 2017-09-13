@@ -442,4 +442,4 @@ clean:
 		  $(GVCF_DIR)/*.jid \
 	          $(CHROM_DIR)/*.jid \
 		  $(TRIM_DIR)/*.jid \
-	          $(GVCF_DIR)/res.*.vcf.gz
+	          $(GVCF_DIR)/res.*.vcf.gz*
