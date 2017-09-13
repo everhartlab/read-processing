@@ -80,6 +80,8 @@ look like this:
 - Purple/periwinkle nodes: indexed genomic data
 - brown nodes: scripts in the scripts directory
 
+You can find the [pdf version of this graph here](graph.pdf)
+
 
 Adding steps to the workflow
 ----------------------------
