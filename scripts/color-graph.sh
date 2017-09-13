@@ -1,15 +1,26 @@
 #!/usr/bin/env bash
 
+if [ $# -lt 1 ]; then
+	echo
+	echo "Change the default colors of make2graph for this Makefile"
+	echo
+	echo "Usage: make -Bnd | make2graph | color-graph.sh <SAMPLENAME>"
+	echo
+	echo "	<SAMPLENAME> - A common name of all your samples (assumed to be at the beginning)"
+	echo
+	exit
+fi
+
 SAMPLE=$1
 
 # GrandBudapest2
-#  Pink       Purple     Brown      Blue
-# "#E6A0C4", "#C6CDF7", "#D8A499", "#7294D4"
 pink="#E6A0C4"
 purple="#C6CDF7"
 brown="#D8A499"
 blue="#7294D4"
+
 unamestr=$(uname)
+
 if [[ "$unamestr" == 'Linux' ]]; then
 	EX="-r"
 else

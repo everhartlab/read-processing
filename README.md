@@ -80,7 +80,8 @@ look like this:
 - Purple/periwinkle nodes: indexed genomic data
 - brown nodes: scripts in the scripts directory
 
-You can find the [pdf version of this graph here](graph.pdf)
+You can find the [pdf version of this graph here](graph.pdf).
+The color palette used for the graph is from the GrandBudapest2 palette of the [The Wes Anderson Palettes](https://github.com/karthik/wesanderson) by Karthik Ram.
 
 
 Adding steps to the workflow
