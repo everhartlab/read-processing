@@ -105,7 +105,6 @@ $(SAM_DIR) \
 $(BAM_DIR) \
 $(REF_DIR) \
 $(GVCF_DIR) \
-$(CHR_JOBS) \
 $(TRIM_DIR) \
 $(INT_RUN) \
 $(BT2_RUN) \
@@ -258,7 +257,8 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 # 	- This assumes that the first 8 characters of your FASTA headers are unique
 # 	  identifiers. If not, change the `cut -c 1-8` command to the proper range
 #
-$(GVCF_DIR)/res.vcf.jid : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN) $(CHR_JOBS) $(CHR_RUN)
+$(CHR_JOBS) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scripts/chromosome-jobs.sh $(VCF_RUN) $(CHR_RUN)
+	mkdir -p $(CHR_JOBS)
 	sleep 10 # to allow the intervals enough time to be computed
 	for i in $$(grep '>' $(REF_FNA) | sed 's/>//' | cut -c 1-8); \
 	do \
@@ -270,22 +270,32 @@ $(GVCF_DIR)/res.vcf.jid : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT
 		-e $(CHR_RUN)/$$i.err \
 		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jobid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
+
+$(GVCF_DIR)/res.vcf.jid :
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-VCF \
 	-o $(VCF_RUN)/cat-vcf.out \
 	-e $(VCF_RUN)/cat-vcf.err \
-	--hold \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*jid) \
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) | cut -c 21- > $@
 
-$(VCF) : $(GVCF_DIR)/res.vcf.jid
+$(VCF) : $(CHR_JOBS)
+	printf '#!/usr/bin/env bash\nmake $(GVCF_DIR)/res.vcf.jid\n' > $(GVCF_DIR)/schedule.vcf
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J VCF-SCHEDULE \
+	-o $(VCF_RUN)/schedule-vcf.out \
+	-e $(VCF_RUN)/schedule-vcf.err \
+	--hold \
+	$(GVCF_DIR)/schedule.vcf | cut -c 21- > $(GVCF_DIR)/res.vcf.tmp.jid
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VCF \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(CHR_JOBS)/*jid) \
 	-o $(VCF_RUN)/release-vcf.out \
 	-e $(VCF_RUN)/release-vcf.err \
-	scripts/release-job.sh 10 $<
+	scripts/release-job.sh 10 $(GVCF_DIR)/res.vcf.tmp.jid
 	
 # ---- Call variants in intervals within a given chromosome -------------------
 #
