@@ -28,7 +28,7 @@ fi
 IN=${1}/${2}
 OUT=${1}/sub.${2}
 ARGS=${@:3}
-CMD="reformat.sh  in1=${IN}_1.fq.gz   in2=${IN}_1.fq.gz \
+CMD="reformat.sh  in1=${IN}_1.fq.gz   in2=${IN}_2.fq.gz \
                  out1=${OUT}_1.fq.gz out2=${OUT}_2.fq.gz \
                  ${ARGS[@]}"
 # Run the command through time with memory and such reporting.
