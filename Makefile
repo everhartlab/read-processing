@@ -15,7 +15,7 @@
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.PHONY: all index help trim map bam gvcf vcf clean cleanall validate 
+.PHONY: all index help trim denovo map bam gvcf vcf clean cleanall validate 
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
@@ -37,7 +37,7 @@ BAM_DIR  := BAMS
 GVCF_DIR := GVCF
 CHR_JOBS := GVCF/CHROM_JOBS
 REF_DIR  := REF
-
+DEN_DIR  := DENOVO
 
 # Define run directories
 RUNS     := runs
@@ -54,10 +54,12 @@ DCT_RUN  := $(RUNS)/GATK-REF
 GCF_RUN  := $(RUNS)/MAKE-GVCF
 VCF_RUN  := $(RUNS)/MAKE-VCF
 CHR_RUN  := $(RUNS)/CHROM_RUN
+DEN_RUN  := $(RUNS)/DENOVO_RUN
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
 TRIMMOD  := trimmomatic/0.36
+SPADES   := spades/3.11
 SAMTOOLS := samtools/1.3
 VCFTOOLS := vcftools/0.1
 PICARD   := picard/2.9
@@ -83,7 +85,7 @@ DUP_VAL  := $(patsubst %_nsort.bam, %_dupmrk_stats.txt.gz, $(BAM))
 PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
 BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
-
+DENOVOS  := $(strip $(patsubst reads/%,$(DEN_DIR)/%/scaffolds.fasta,$(READS)))
 
 all   : $(VCF) # Everything is dependent on the VCF output. 
 
@@ -93,6 +95,7 @@ map   : $(SAM)
 bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
 gvcf  : $(GVCF)
 vcf   : $(VCF)
+denovo: $(DENOVOS)
 
 graph.dot :
 	$(MAKE) -Bnd | make2graph -b > graph.dot
@@ -111,6 +114,7 @@ validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
 $(RUNS) \
 $(IDX_DIR) \
 $(SAM_DIR) \
+$(DEN_DIR) \
 $(BAM_DIR) \
 $(REF_DIR) \
 $(GVCF_DIR) \
@@ -118,6 +122,7 @@ $(TRIM_DIR) \
 $(INT_RUN) \
 $(BT2_RUN) \
 $(TRM_RUN) \
+$(DEN_RUN) \
 $(MAP_RUN) \
 $(SVL_RUN) \
 $(BAM_RUN) \
@@ -329,6 +334,21 @@ $(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
 		   cut -c 21- > $(GVCF_DIR)/res.$*-$$suffix.jid; \
 	done
 	cp $< $@
+
+# DE-NOVO ALIGNMENT ===========================================================
+
+# Mapping the reads -----------------------------------------------------------
+$(DEN_DIR)/%/scaffolds.fasta : $(TRIM_DIR)/%_1P.fq.gz scripts/make-denovo-assembly.sh | $(DEN_DIR) $(DEN_RUN) 
+	mkdir -p $(DEN_DIR)/$*
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J $*-DENOVO \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*.jid) \
+	-o $(DEN_RUN)/$*.out \
+	-e $(DEN_RUN)/$*.err \
+	scripts/make-denovo-assembly.sh \
+	   $(<D)/$* $(DEN_DIR)/$* $(SPADES) | \
+	   cut -c 21- > $@.jid
 
 
 # ==== VALIDATION STEPS =======================================================
