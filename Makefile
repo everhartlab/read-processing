@@ -363,8 +363,8 @@ $(ABY_DIR)/%/run.jid : $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembly.sh | $
 	-J $*-ABYSS \
 	--array=24-96:8 \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*.jid) \
-	-o $(ABY_RUN)/$*.out \
-	-e $(ABY_RUN)/$*.err \
+	-o $(ABY_RUN)/$*k$${SLURM_ARRAY_TASK_ID}.out \
+	-e $(ABY_RUN)/$*k$${SLURM_ARRAY_TASK_ID}.err \
 	scripts/make-abyss-assembly.sh \
 	   $(<D) $* $(ABY_DIR)/$* | \
 	   cut -c 21- > $@

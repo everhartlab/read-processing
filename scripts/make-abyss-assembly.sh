@@ -38,17 +38,26 @@ KDIR=${OUTDIR}/${PREFIX}/k${SLURM_ARRAY_TASK_ID}
 STEM=${INDIR}/${PREFIX}
 
 
-
+# NOTE TO FUTURE ZHIAN:
+# 
+# It appears as if we need to have ABYSS-P installed for the parallel version
+# The way we can do that... I think... is by running the installation process
+# of abyss on the cluster using openmp 
 CMD="abyss-pe \
 -C ${KDIR} \
 name=${PREFIX} \
 k=${SLURM_ARRAY_TASK_ID} \
-in='${STEM}_1P.fq.gz ${STEM}_2P.fq.gz'"
+n=8 \
+np=1 \
+in='$(pwd)/${STEM}_1P.fq.gz $(pwd)/${STEM}_2P.fq.gz'"
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
 # by 4x; this is compensated for in the SGE_Plotdir script.
 TIME='/usr/bin/env time -f " \\tFull Command:                      %C \\n\\tMemory (kb):                       %M \\n\\t# SWAP  (freq):                    %W \\n\\t# Waits (freq):                    %w \\n\\tCPU (percent):                     %P \\n\\tTime (seconds):                    %e \\n\\tTime (hh:mm:ss.ms):                %E \\n\\tSystem CPU Time (seconds):         %S \\n\\tUser   CPU Time (seconds):         %U " '
+
+
+module load compiler/gcc/6.1 openmpi/2.1
 
 # Write details to stdout
 echo "  Job: $SLURM_ARRAY_JOB_ID"
