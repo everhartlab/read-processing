@@ -15,7 +15,7 @@
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.PHONY: all index help trim denovo map bam gvcf vcf clean cleanall validate 
+.PHONY: all index help trim denovo map bam gvcf vcf clean cleanall validate abyss
 
 # Define genome directory. YOU MUST CREATE THIS DIRECTORY
 FAST_DIR := genome
@@ -38,6 +38,7 @@ GVCF_DIR := GVCF
 CHR_JOBS := GVCF/CHROM_JOBS
 REF_DIR  := REF
 DEN_DIR  := DENOVO
+ABY_DIR  := ABYSS
 
 # Define run directories
 RUNS     := runs
@@ -55,6 +56,7 @@ GCF_RUN  := $(RUNS)/MAKE-GVCF
 VCF_RUN  := $(RUNS)/MAKE-VCF
 CHR_RUN  := $(RUNS)/CHROM_RUN
 DEN_RUN  := $(RUNS)/DENOVO_RUN
+ABY_RUN  := $(RUNS)/ABYSS_RUN
 
 # Modules and environmental variables
 BOWTIE   := bowtie/2.2
@@ -86,6 +88,7 @@ PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
 BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
 DENOVOS  := $(strip $(patsubst reads/%,$(DEN_DIR)/%/scaffolds.fasta,$(READS)))
+ABYS     := $(strip $(patsubst reads/%,$(ABY_DIR)/%/run.jid,$(READS)))
 
 all   : $(VCF) # Everything is dependent on the VCF output. 
 
@@ -96,7 +99,7 @@ bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
 gvcf  : $(GVCF)
 vcf   : $(VCF)
 denovo: $(DENOVOS)
-
+abyss : $(ABYS)
 graph.dot :
 	$(MAKE) -Bnd | make2graph -b > graph.dot
 
@@ -115,6 +118,8 @@ $(RUNS) \
 $(IDX_DIR) \
 $(SAM_DIR) \
 $(DEN_DIR) \
+$(ABY_DIR) \
+$(ABY_RUN) \
 $(BAM_DIR) \
 $(REF_DIR) \
 $(GVCF_DIR) \
@@ -351,6 +356,18 @@ $(DEN_DIR)/%/scaffolds.fasta : $(TRIM_DIR)/%_1P.fq.gz scripts/make-denovo-assemb
 	   cut -c 21- > $@.jid
 
 
+$(ABY_DIR)/%/run.jid : $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembly.sh | $(ABY_DIR) $(ABY_RUN)
+	mkdir -p $(ABY_DIR)/$*
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J $*-ABYSS \
+	--array=24-96:8 \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*.jid) \
+	-o $(ABY_RUN)/$*.out \
+	-e $(ABY_RUN)/$*.err \
+	scripts/make-abyss-assembly.sh \
+	   $(<D) $* $(ABY_DIR)/$* | \
+	   cut -c 21- > $@
 # ==== VALIDATION STEPS =======================================================
 
 # Validating the mapping ------------------------------------------------------
