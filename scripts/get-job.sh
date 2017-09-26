@@ -18,7 +18,9 @@ counter=0
 
 for i in $@
 do
+if [ -e "$i" ]; then
 	OUT[counter++]=$(head -n 1 $i | sed -e 's/.*  Job: //' | tr '\n' ':')
+fi
 done
 
 tr -d " " <<< $(rev <<< ${OUT[@]} | cut -c 2- | rev)
