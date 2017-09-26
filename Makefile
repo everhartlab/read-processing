@@ -366,7 +366,7 @@ $(ABY_DIR)/%/run.jid : $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembly.sh | $
 	-o $(ABY_RUN)/k%a.out \
 	-e $(ABY_RUN)/k%a.err \
 	scripts/make-abyss-assembly.sh \
-	   $(<D) $* $(ABY_DIR)/$* | \
+	   $(<D) $* $(ABY_DIR) | \
 	   cut -c 21- > $@
 # ==== VALIDATION STEPS =======================================================
 
