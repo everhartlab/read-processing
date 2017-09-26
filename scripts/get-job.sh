@@ -20,6 +20,8 @@ for i in $@
 do
 if [ -e "$i" ]; then
 	OUT[counter++]=$(head -n 1 $i | sed -e 's/.*  Job: //' | tr '\n' ':')
+else
+	OUT[counter++]=000000
 fi
 done
 
