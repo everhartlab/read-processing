@@ -21,7 +21,7 @@ do
 if [ -e "$i" ]; then
 	OUT[counter++]=$(head -n 1 $i | sed -e 's/.*  Job: //' | tr '\n' ':')
 else
-	OUT[counter++]=000000
+	OUT[counter++]=$([[ -e .fakejob ]] && cat .fakejob | tr '\n' ':' || sbatch scripts/echo-job.sh | cut -c 21-)
 fi
 done
 
