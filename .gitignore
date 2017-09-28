@@ -10,5 +10,6 @@ SAMS/*
 BAMS/*
 REF/*
 GVCF/*
+ABYSS/*
 .slurm_array_jobnums
-
+.fakejob
