@@ -48,6 +48,7 @@ CMD="abyss-pe \
 name=${PREFIX} \
 k=${SLURM_ARRAY_TASK_ID} \
 n=8 \
+G=38906597 \
 np=1 \
 in='$(pwd)/${STEM}_1P.fq.gz $(pwd)/${STEM}_2P.fq.gz'"
 
