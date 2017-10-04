@@ -4,7 +4,7 @@
 #SBATCH --time=24:00:00
 #
 # Set memory requested and max memory
-#SBATCH --mem=50gb
+#SBATCH --mem=10gb
 #
 # Request some processors
 #SBATCH --cpus-per-task=8
@@ -34,8 +34,8 @@ fi
 INDIR=$1
 PREFIX=$2
 OUTDIR=$3
-KDIR=${OUTDIR}/${PREFIX}/k${SLURM_ARRAY_TASK_ID}
-STEM=${INDIR}/${PREFIX}
+KDIR=${OUTDIR}/k${SLURM_ARRAY_TASK_ID} # output directory e.g. ABYSS/k24/
+STEM=${INDIR}/${PREFIX} # stem of each paired end read e.g. reads/SS.11.01
 
 
 # NOTE TO FUTURE ZHIAN:
@@ -67,10 +67,6 @@ echo
 echo "  Started on:           " `/bin/hostname -s`
 echo "  Started at:           " `/bin/date`
 echo ${CMD}
-
-# Writing to a jobfile before the command is executed allows for a hack to make
-# a target for the Makefile that is older than the multiple files for output.
-# printf "$SLURM_JOB_ID\n" > $JOBFILE
 
 mkdir -p ${KDIR}
 eval ${TIME}${CMD}

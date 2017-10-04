@@ -24,6 +24,7 @@ FASTA    := $(wildcard $(FAST_DIR)/*.f*a.gz)
 # Reads. Make sure your PE reads end with _1.fq.gz and _2.fq.gz
 READS    := $(shell ls -d reads/*_1.fq.gz | sed 's/_1.fq.gz//g')
 RFILES   := $(addsuffix _1.fq.gz, $(READS))
+NAMES    := $(patsubst reads/%,%,$(READS))
 
 # Define Directory names
 TMP      := \$$TMPDIR
@@ -87,8 +88,20 @@ DUP_VAL  := $(patsubst %_nsort.bam, %_dupmrk_stats.txt.gz, $(BAM))
 PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
 BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
 VCF      := $(GVCF_DIR)/res.vcf.gz
+
+# Denovo assembly via ABYSS
+K        := k24 k32 k40 k48 k56 k64 k72 k80 k88 k96
+K        := $(addprefix $(ABY_DIR)/,$K)
+# --- Here I have to loop over K in order to add the samples to the end
+ABYS     := $(foreach k, $K, $(addprefix $k/, $(addsuffix -scaffolds.fa,$(NAMES))))
+# --- Since I'm using an array job to submit all values of K per sample, having this
+#     run for each value of K is unnecessary. To avoid this, I'm going to set the target
+#     to be k24 and have all other Ks be dependent on that.
+#     This may seem unnecessary, but this allows me to track these important files as opposed to
+#     tracking jobfiles or something like that.
+TARGET_K := $(filter $(ABY_DIR)/k24/%, $(ABYS))
+OTHER_K  := $(filter-out $(ABY_DIR)/k24/%, $(ABYS))
 DENOVOS  := $(strip $(patsubst reads/%,$(DEN_DIR)/%/scaffolds.fasta,$(READS)))
-ABYS     := $(strip $(patsubst reads/%,$(ABY_DIR)/%/run.jid,$(READS)))
 
 all   : $(VCF) # Everything is dependent on the VCF output. 
 
@@ -99,6 +112,8 @@ bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
 gvcf  : $(GVCF)
 vcf   : $(VCF)
 denovo: $(DENOVOS)
+# All k > 24 are dependent on k24
+$(OTHER_K) : $(TARGET_K)
 abyss : $(ABYS)
 graph.dot :
 	$(MAKE) -Bnd | make2graph -b > graph.dot
@@ -119,6 +134,7 @@ $(IDX_DIR) \
 $(SAM_DIR) \
 $(DEN_DIR) \
 $(ABY_DIR) \
+$K         \
 $(ABY_RUN) \
 $(BAM_DIR) \
 $(REF_DIR) \
@@ -355,9 +371,8 @@ $(DEN_DIR)/%/scaffolds.fasta : $(TRIM_DIR)/%_1P.fq.gz scripts/make-denovo-assemb
 	   $(<D)/$* $(DEN_DIR)/$* $(SPADES) | \
 	   cut -c 21- > $@.jid
 
-
-$(ABY_DIR)/%/run.jid : $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembly.sh | $(ABY_DIR) $(ABY_RUN)
-	mkdir -p $(ABY_DIR)/$*
+# Runinning abyss on different values of K
+$(ABY_DIR)/k24/%-scaffolds.fa: $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembly.sh | $(ABY_DIR) $(ABY_RUN)
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J $*-ABYSS \
@@ -367,7 +382,7 @@ $(ABY_DIR)/%/run.jid : $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembly.sh | $
 	-e $(ABY_RUN)/%x-k%a.err \
 	scripts/make-abyss-assembly.sh \
 	   $(<D) $* $(ABY_DIR) | \
-	   cut -c 21- > $@
+	   cut -c 21- > $@.jid
 # ==== VALIDATION STEPS =======================================================
 
 # Validating the mapping ------------------------------------------------------
