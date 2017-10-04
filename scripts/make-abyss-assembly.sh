@@ -45,6 +45,7 @@ STEM=${INDIR}/${PREFIX} # stem of each paired end read e.g. reads/SS.11.01
 # of abyss on the cluster using openmp 
 CMD="abyss-pe \
 -C ${KDIR} \
+--coverage-hist=${PREFIX}-coverage.hist
 name=${PREFIX} \
 k=${SLURM_ARRAY_TASK_ID} \
 n=8 \
