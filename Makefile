@@ -382,7 +382,7 @@ $(ABY_DIR)/k24/%-scaffolds.fa: $(TRIM_DIR)/%_1P.fq.gz scripts/make-abyss-assembl
 	-e $(ABY_RUN)/%x-k%a.err \
 	scripts/make-abyss-assembly.sh \
 	   $(<D) $* $(ABY_DIR) | \
-	   cut -c 21- > $@.jid
+	   cut -c 21- > $(ABY_DIR)/$*.jid
 # ==== VALIDATION STEPS =======================================================
 
 # Validating the mapping ------------------------------------------------------
