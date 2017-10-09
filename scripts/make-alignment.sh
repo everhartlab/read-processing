@@ -23,7 +23,9 @@ if [ $# -lt 5 ]; then
 	echo
 	echo "	<bt2-idx> - basename of reference (with path)"
 	echo "	<dir>     - directory in which to place the SAM files"
-	echo "	<suffix>  - suffix for the reads (e.g.: P.fq.gz)"
+	echo "	<suffix>  - suffix for the reads to determine if these are paired" 
+	echo "	            or unpaired (e.g.: P.fq.gz indicated paired and U.fq.gz"
+	echo "	            indicates unpaired)"
 	echo "	<sample>  - a sample without the suffix (e.g.: TRIM/SS.11.01)"
 	echo "  <bt2mod>  - bowtie2 module (bowtie/2.2)"
 	echo
@@ -43,37 +45,39 @@ module load $BT2MOD
 CMD="bowtie2 -x $IDX -S $DIR/"
 
 # Create named pipes because bowtie2 is stupid and can't handle gzipped files >:(
-# Note that I have to make four of these, two for the paired reads and two for the
-# unpaired reads.
 MKFIFO="mkfifo \
-\$TMPDIR/M1.fifo \
-\$TMPDIR/M2.fifo \
-\$TMPDIR/U1.fifo \
-\$TMPDIR/U2.fifo"
+\$TMPDIR/S1.fifo \
+\$TMPDIR/S2.fifo"
 
-M1=$SAMPLE"_1$SUF"
-M2=$SAMPLE"_2$SUF"
-U1=$SAMPLE"_1U.fq.gz"
-U2=$SAMPLE"_2U.fq.gz"
+S1=$SAMPLE"_1$SUF"
+S2=$SAMPLE"_2$SUF"
 
-WFIFO="zcat $M1 > \$TMPDIR/M1.fifo \
-& zcat $M2 > \$TMPDIR/M2.fifo \
-& zcat $U1 > \$TMPDIR/U1.fifo \
-& zcat $U2 > \$TMPDIR/U2.fifo \
-&"
+WFIFO="zcat $S1 > \$TMPDIR/S1.fifo \
+& zcat $S2 > \$TMPDIR/S2.fifo \
+& "
 
 # Info Line: 
 #          0	     1	          2	      3	      4	5	   6	       7	         8
 # INSTRUMENT	RUN_NO	FLOWCELL_ID	LANE_NO	TILE_ID	X	Y	READ	FILTERED	CONTROL_NO
-INFO=($(zcat $M1 | head -n 1 | sed 's/:/ /g'))
+INFO=($(zcat $S1 | head -n 1 | sed 's/:/ /g'))
+
+# Catch paired or unpaired reads
+if [ ${SUF} = P* ]; then
+	ONE="-1"
+	TWO="-2"
+	BASE="$(basename $SAMPLE)_P"
+else
+	ONE="-U"
+	TWO="-U"
+	BASE="$(basename $SAMPLE)_U"
+fi
 
 # Setting arguments
-ARGS="-1 \$TMPDIR/M1.fifo,\$TMPDIR/U1.fifo \
--2 \$TMPDIR/M2.fifo,\$TMPDIR/U2.fifo \
+ARGS="${ONE} \$TMPDIR/S1.fifo \
+-${TWO} \$TMPDIR/S2.fifo \
 --maxins 800 \
 --fr \
 -t"
-BASE=$(basename $SAMPLE)
 
 # Setup read group information for GATK
 RGID="--rg-id ${INFO[2]}.${INFO[3]}"
