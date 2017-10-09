@@ -75,7 +75,10 @@ REF_FNA  := $(addsuffix /genome.fasta,$(REF_DIR))
 REF_IDX  := $(patsubst %.fasta,%.dict, $(REF_FNA))
 INTERVALS:= $(patsubst %.fasta,%.intervals.txt, $(REF_FNA))
 REFSIZES := $(patsubst %.fasta,%.sizes.txt, $(REF_FNA))
-TR_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
+P1_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
+P2_READS := $($(P1_READS):%_1P.fq.gz=%_2P.fq.gz)
+U1_READS := $($(P1_READS):%_1P.fq.gz=%_1U.fq.gz)
+U2_READS := $($(P1_READS):%_1P.fq.gz=%_2U.fq.gz)
 TR_PRE   := $(patsubst reads/%,$(TRIM_DIR)/%, $(READS))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2)
 SAM      := $(patsubst reads/%.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
@@ -108,7 +111,7 @@ DENOVOS  := $(strip $(patsubst reads/%,$(DEN_DIR)/%/scaffolds.fasta,$(READS)))
 all   : $(VCF) # Everything is dependent on the VCF output. 
 
 index : $(IDX) 
-trim  : $(TR_READS)
+trim  : $(P1_READS) $(P2_READS) $(U1_READS) $(U2_READS)
 map   : $(SAM)
 bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
 gvcf  : $(GVCF)
@@ -227,8 +230,10 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-e $(TRM_RUN)/$*.err \
 	scripts/trim-reads.sh $* $(@D) $(TRIMMOD) | cut -c 21- > $(@D)/$*.jid
 
+$(P2_READS) $(U1_READS) $(U2_READS) : $(P1_READS)
+
 # Mapping the reads -----------------------------------------------------------
-$(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
+$(SAM_DIR)/%_P.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
@@ -238,6 +243,30 @@ $(SAM_DIR)/%.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) | $(S
 	scripts/make-alignment.sh \
 	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE) | \
 	   cut -c 21- > $@.jid
+
+$(SAM_DIR)/%_U.sam : $(TRIM_DIR)/%_1U.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAP-READS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/jobid.txt $(<D)/$*.jid) \
+	-o $(MAP_RUN)/$*.out \
+	-e $(MAP_RUN)/$*.err \
+	scripts/make-alignment.sh \
+	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) U.fq.gz $(<D)/$* $(BOWTIE) | \
+	   cut -c 21- > $@.jid
+
+
+$(SAM_DIR)/%.sam : $(USAM) $(PSAM) 
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MAP-READS \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/jobid.txt $(<D)/$*.jid) \
+	-o $(MAP_RUN)/$*.out \
+	-e $(MAP_RUN)/$*.err \
+	scripts/make-alignment.sh \
+	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) U.fq.gz $(<D)/$* $(BOWTIE) | \
+	   cut -c 21- > $@.jid 
+	# These may need to be merged after conversion to BAM
 
 # Sorting and Converting to BAM files -----------------------------------------
 $(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(BAM_RUN)
