@@ -71,7 +71,8 @@ INFO=($(zcat $M1 | head -n 1 | sed 's/:/ /g'))
 ARGS="-1 \$TMPDIR/M1.fifo,\$TMPDIR/U1.fifo \
 -2 \$TMPDIR/M2.fifo,\$TMPDIR/U2.fifo \
 --maxins 800 \
---fr"
+--fr \
+-t"
 BASE=$(basename $SAMPLE)
 
 # Setup read group information for GATK
