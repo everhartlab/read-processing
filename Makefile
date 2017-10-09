@@ -67,6 +67,7 @@ SAMTOOLS := samtools/1.3
 VCFTOOLS := vcftools/0.1
 PICARD   := picard/2.9
 GATK     := gatk/3.4
+ABYSS    := local:abyss_2.2
 gatk     := \$$GATK
 PIC      := \$$PICARD # This is only needed for picard versions < 2
 
@@ -456,11 +457,13 @@ help :
 	@echo "all		makes everything: res.vcf.gz"
 	@echo "index		generate the bowtie2 index"
 	@echo "trim		trims reads with trimmomatic"
-	@echo "map		map reads with samtools"
+	@echo "map		map reads with bowtie2"
 	@echo "bam		convert sam to bam, filter, and remove duplicates"
 	@echo "validate	run validation stats on the bam and sam files"
 	@echo "gvcf		create g.vcf files from HaplotypeCaller"
 	@echo "vcf		create vcf files (this is the longest step)" 
+	@echo
+	@echo "abyss		create de-novo assemblies over k-mer values from 24--96" 
 	@echo
 	@echo "help		show this message" 
 	@echo "clean		remove all *.jid files"
@@ -485,6 +488,7 @@ help :
 	@echo "VCFTOOLS : " $(VCFTOOLS)
 	@echo "PICARD   : " $(PICARD)
 	@echo "GATK     : " $(GATK)
+	@echo "ABySS    : " $(ABYSS)
 	@echo
 
 cleanall:
