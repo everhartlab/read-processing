@@ -7,7 +7,7 @@
 #SBATCH --mem=4gb
 #
 # Request some processors
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=2
 #SBATCH --ntasks=1
 
 if [ $# -lt 5 ]; then
@@ -31,8 +31,6 @@ if [ $# -lt 5 ]; then
 	echo
 	exit
 fi
-
-
 
 IDX=$1
 DIR=$2
@@ -62,22 +60,23 @@ WFIFO="zcat $S1 > \$TMPDIR/S1.fifo \
 INFO=($(zcat $S1 | head -n 1 | sed 's/:/ /g'))
 
 # Catch paired or unpaired reads
-if [ ${SUF} = P* ]; then
+if [ "${SUF}" = "P.fq.gz" ]; then
 	ONE="-1"
 	TWO="-2"
 	BASE="$(basename $SAMPLE)_P"
-else
+else # unpaired reads need no special identifier
 	ONE="-U"
 	TWO="-U"
 	BASE="$(basename $SAMPLE)_U"
 fi
 
 # Setting arguments
-ARGS="${ONE} \$TMPDIR/S1.fifo \
--${TWO} \$TMPDIR/S2.fifo \
+ARGS="-p 2 \
+-t \
 --maxins 800 \
 --fr \
--t"
+${ONE} \$TMPDIR/S1.fifo \
+${TWO} \$TMPDIR/S2.fifo"
 
 # Setup read group information for GATK
 RGID="--rg-id ${INFO[2]}.${INFO[3]}"
