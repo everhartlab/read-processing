@@ -50,12 +50,13 @@ BAM=$1
 SAMTOOLS=$2
 REFERENCE=$3
 
-BAMTMP=$(sed 's/_nsort\.bam/_csort_tmp/' <<< $BAM)
-BAMFIX=$(sed 's/nsort/fixed/' <<< $BAM)
+BAMTMP=$(sed 's/_merged\.bam/_csort_tmp/' <<< $BAM)
+BAMFIX=$(sed 's/merged/fixed/' <<< $BAM)
 
-CMD="samtools fixmate -O bam $BAM /dev/stdout | "
-CMD=$CMD"samtools sort -O bam -o - -T $BAMTMP | "
-CMD=$CMD"samtools calmd -b - $REFERENCE > $BAMFIX"
+CMD="samtools fixmate -O bam $BAM /dev/stdout \
+| samtools sort -O bam -o - -T $BAMTMP \
+| samtools calmd -b - $REFERENCE \
+> $BAMFIX"
 
 
 module load $SAMTOOLS
