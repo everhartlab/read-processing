@@ -311,7 +311,7 @@ $(BAM_DIR)/%_merged.bam : $(BAM_DIR)/%_P_nsort.bam scripts/merge-bam.sh $(UBAM) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MERGE \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*_P_nsort.jid $(<D)/$*_U_nsort.jid) \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*_P_nsort.bam.jid $(<D)/$*_U_nsort.bam.jid) \
 	-o $(MRG_RUN)/$*_merged.out \
 	-e $(MRG_RUN)/$*_merge.err \
 	scripts/merge-bam.sh $@ $(<D)/$* $(SAMTOOLS) \
