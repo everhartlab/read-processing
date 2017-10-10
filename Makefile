@@ -50,6 +50,7 @@ MAP_RUN  := $(RUNS)/MAP-READS
 SVL_RUN  := $(RUNS)/VALIDATE-SAM
 BVL_RUN  := $(RUNS)/VALIDATE-BAM
 BAM_RUN  := $(RUNS)/SAM-TO-BAM
+MRG_RUN  := $(RUNS)/MERGE-BAMS
 MKD_RUN  := $(RUNS)/MARK-DUPS
 DVL_RUN  := $(RUNS)/VALIDATE-DUPS
 DCT_RUN  := $(RUNS)/GATK-REF
@@ -76,24 +77,33 @@ REF_FNA  := $(addsuffix /genome.fasta,$(REF_DIR))
 REF_IDX  := $(patsubst %.fasta,%.dict, $(REF_FNA))
 INTERVALS:= $(patsubst %.fasta,%.intervals.txt, $(REF_FNA))
 REFSIZES := $(patsubst %.fasta,%.sizes.txt, $(REF_FNA))
-P1_READS := $(patsubst reads/%,$(TRIM_DIR)/%_1P.fq.gz, $(READS))
-P2_READS := $($(P1_READS):%_1P.fq.gz=%_2P.fq.gz)
-U1_READS := $($(P1_READS):%_1P.fq.gz=%_1U.fq.gz)
-U2_READS := $($(P1_READS):%_1P.fq.gz=%_2U.fq.gz)
-TR_PRE   := $(patsubst reads/%,$(TRIM_DIR)/%, $(READS))
+TRIMMED  := $(addprefix $(TRIM_DIR)/, $(NAMES))
+P1_READS := $(addsuffix _1P.fq.gz, $(TRIMMED))
+P2_READS := $(addsuffix _2P.fq.gz, $(TRIMMED))
+U1_READS := $(addsuffix _1U.fq.gz, $(TRIMMED))
+U2_READS := $(addsuffix _2U.fq.gz, $(TRIMMED))
 IDX      := $(addprefix $(strip $(IDX_DIR)/$(PREFIX)), .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2)
-SAM      := $(patsubst reads/%.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
-USAM     := $(patsubst reads/%_U.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
-PSAM     := $(patsubst reads/%_P.sam, $(SAM_DIR)/%.sam, $(addsuffix .sam, $(READS)))
-SAM_VAL  := $(patsubst %.sam, %_stats.txt.gz, $(SAM))
-BAM      := $(patsubst $(SAM_DIR)/%.sam,$(BAM_DIR)/%_nsort.bam, $(SAM))
-FIXED    := $(patsubst %_nsort.bam,%_fixed.bam, $(BAM))
-DUPMRK   := $(patsubst %_nsort.bam, %_dupmrk.bam, $(BAM))
-GVCF     := $(patsubst reads/%,$(GVCF_DIR)/%.g.vcf.gz, $(READS))
-DUP_VAL  := $(patsubst %_nsort.bam, %_dupmrk_stats.txt.gz, $(BAM))
-PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
-BAM_VAL  := $(patsubst %_fixed.bam, %_fixed_stats.txt.gz, $(FIXED))
+# ------- The sam files are created in paired and unpaired varieties
+SAM      := $(addprefix $(SAM_DIR)/, $(NAMES))
+USAM     := $(addsuffix _U.sam, $(SAM))
+PSAM     := $(addsuffix _P.sam, $(SAM))
+# ------- The bam files are similar 
+BAM      := $(addprefix $(BAM_DIR)/, $(NAMES))
+UBAM     := $(addsuffix _U_nsort.bam, $(BAM))
+PBAM     := $(addsuffix _P_nsort.bam, $(BAM))
+# ------ The pairs are then merged.
+MERGED   := $(addsuffix _merged.bam, $(BAM))
+FIXED    := $(addsuffix _fixed.bam, $(BAM))
+DUPMRK   := $(addsuffix _dupmrk.bam, $(BAM))
+# ------ GVCF files are created from the BAMs
+GVCF     := $(addsuffix .g.vcf.gz, $(NAMES))
+GVCF     := $(addprefix $(GVCF_DIR)/, $(GVCF))
 VCF      := $(GVCF_DIR)/res.vcf.gz
+# ------ Validation steps
+SAM_VAL  := $(patsubst %.sam, %_stats.txt.gz, $(PSAM) $(USAM))
+DUP_VAL  := $(patsubst %.bam, %_stats.txt.gz, $(DUPMRK))
+PLOT_VAL := $(patsubst %_nsort.bam, %/, $(BAM))
+BAM_VAL  := $(patsubst %.bam, %_stats.txt.gz, $(FIXED))
 
 # Denovo assembly via ABYSS
 K        := k24 k32 k40 k48 k56 k64 k72 k80 k88 k96
@@ -113,8 +123,8 @@ all   : $(VCF) # Everything is dependent on the VCF output.
 
 index : $(IDX) 
 trim  : $(P1_READS) $(P2_READS) $(U1_READS) $(U2_READS)
-map   : $(SAM)
-bam   : $(DUPRMK) # runs/GET-DEPTH/GET-DEPTH.sh
+map   : $(USAM) $(PSAM)
+bam   : $(DUPMRK) # runs/GET-DEPTH/GET-DEPTH.sh
 gvcf  : $(GVCF)
 vcf   : $(VCF)
 denovo: $(DENOVOS)
@@ -134,6 +144,24 @@ graph.dot :
 validate : $(SAM_VAL) $(BAM_VAL) $(DUP_VAL)
 # plot     : $(PLOT_VAL)
 
+.PHONY: debug
+
+debug :
+	@echo "TRIM -----"
+	@echo $(P1_READS)
+	@echo $(P2_READS)
+	@echo $(U1_READS)
+	@echo $(U2_READS)
+	@echo "MAP ------"
+	@echo $(USAM)
+	@echo $(PSAM)
+	@echo "BAM ------"
+	@echo $(UBAM)
+	@echo $(PBAM)
+	@echo $(MERGED)
+	@echo $(FIXED)
+	@echo $(DUPMRK)
+
 # Create Output Directories 
 $(RUNS) \
 $(IDX_DIR) \
@@ -151,6 +179,7 @@ $(BT2_RUN) \
 $(TRM_RUN) \
 $(DEN_RUN) \
 $(MAP_RUN) \
+$(MRG_RUN) \
 $(SVL_RUN) \
 $(BAM_RUN) \
 $(MKD_RUN) \
@@ -173,7 +202,8 @@ $(REF_DIR)/genome.fasta : $(FASTA) | $(REF_DIR) $(RUNS)
 	-J CAT-GENOME \
 	-o runs/CAT-GENOME/CAT-GENOME.out \
 	-e runs/CAT-GENOME/CAT-GENOME.out \
-	scripts/cat-genome.sh $@ $^ | cut -c 21- > $@.jid
+	scripts/cat-genome.sh $@ $^ \
+	   | cut -c 21- > $@.jid
 
 # Create dictionary for reference
 $(REF_DIR)/%.dict : $(REF_DIR)/%.fasta | $(DCT_RUN)
@@ -183,7 +213,8 @@ $(REF_DIR)/%.dict : $(REF_DIR)/%.fasta | $(DCT_RUN)
 	-o $(DCT_RUN)/GATK-REF.out \
 	-e $(DCT_RUN)/GATK-REF.err \
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
-	scripts/make-GATK-ref-dict.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
+	scripts/make-GATK-ref-dict.sh $< $(SAMTOOLS) $(PICARD) \
+	   | cut -c 21- > $@.jid
 		
 # Creates intervals for the final step ----------------------------------------
 $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
@@ -193,7 +224,8 @@ $(REF_DIR)/%.intervals.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py s
 	-o $(INT_RUN)/GATK-INTERVALS.out \
 	-e $(INT_RUN)/GATK-INTERVALS.err \
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
-	scripts/make-GATK-intervals.sh $< 100000 $@ | cut -c 21- > $@.jid
+	scripts/make-GATK-intervals.sh $< 100000 $@ \
+	   | cut -c 21- > $@.jid
 
 $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scripts/make-GATK-intervals.sh | $(INT_RUN)
 	sbatch \
@@ -202,7 +234,8 @@ $(REF_DIR)/%.sizes.txt : $(REF_DIR)/%.fasta scripts/make-GATK-intervals.py scrip
 	-o $(INT_RUN)/GATK-SIZES.out \
 	-e $(INT_RUN)/GATK-SIZES.err \
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
-	scripts/make-GATK-intervals.sh $< 0 $@ | cut -c 21- > $@.jid
+	scripts/make-GATK-intervals.sh $< 0 $@ \
+	   | cut -c 21- > $@.jid
 
 # Indexing the genome for Bowtie2 ---------------------------------------------
 $(BT2_RUN)/jobid.txt: $(REF_FNA) scripts/make-index.sh | $(IDX_DIR) $(BT2_RUN) 
@@ -213,8 +246,8 @@ $(BT2_RUN)/jobid.txt: $(REF_FNA) scripts/make-index.sh | $(IDX_DIR) $(BT2_RUN)
 	-o $(BT2_RUN)/BOWTIE2-BUILD.out \
 	-e $(BT2_RUN)/BOWTIE2-BUILD.err \
 	scripts/make-index.sh \
-	   $< $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE) | \
-	   cut -c 21- > $@ 
+	   $< $(addprefix $(IDX_DIR)/, $(PREFIX)) $@ $(BOWTIE) \
+	   | cut -c 21- > $@ 
 
 # Accounting for BOWTIE2 index files
 $(IDX) : $(BT2_RUN)/jobid.txt
@@ -229,45 +262,38 @@ $(TRIM_DIR)/%_1P.fq.gz: reads/%_1.fq.gz scripts/trim-reads.sh | $(TRIM_DIR) $(TR
 	-J TRIM-READS \
 	-o $(TRM_RUN)/$*.out \
 	-e $(TRM_RUN)/$*.err \
-	scripts/trim-reads.sh $* $(@D) $(TRIMMOD) | cut -c 21- > $(@D)/$*.jid
+	scripts/trim-reads.sh $* $(@D) $(TRIMMOD) \
+	   | cut -c 21- > $(@D)/$*.jid
 
 $(P2_READS) $(U1_READS) $(U2_READS) : $(P1_READS)
 
 # Mapping the reads -----------------------------------------------------------
-$(SAM_DIR)/%_P.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
+# 	Note: The paired reads and unpaired reads need to be mapped separately
+# 	It's a bit irritating, but that's the way it is.
+#
+# ---- Paired Reads -----------------------------------------------------------
+$(SAM_DIR)/%_P.sam : $(TRIM_DIR)/%_1P.fq.gz scripts/make-alignment.sh $(IDX) $(P2_READS) | $(SAM_DIR) $(MAP_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/jobid.txt $(<D)/$*.jid) \
-	-o $(MAP_RUN)/$*.out \
-	-e $(MAP_RUN)/$*.err \
+	-o $(MAP_RUN)/$*_P.out \
+	-e $(MAP_RUN)/$*_P.err \
 	scripts/make-alignment.sh \
-	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE) | \
-	   cut -c 21- > $@.jid
+	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) P.fq.gz $(<D)/$* $(BOWTIE) \
+	   | cut -c 21- > $@.jid
 
-$(SAM_DIR)/%_U.sam : $(TRIM_DIR)/%_1U.fq.gz scripts/make-alignment.sh $(IDX) | $(SAM_DIR) $(MAP_RUN) 
+# ---- Unpaired Reads ---------------------------------------------------------
+$(SAM_DIR)/%_U.sam : $(TRIM_DIR)/%_1U.fq.gz scripts/make-alignment.sh $(IDX) $(U2_READS) | $(SAM_DIR) $(MAP_RUN) 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAP-READS \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/jobid.txt $(<D)/$*.jid) \
-	-o $(MAP_RUN)/$*.out \
-	-e $(MAP_RUN)/$*.err \
+	-o $(MAP_RUN)/$*_U.out \
+	-e $(MAP_RUN)/$*_U.err \
 	scripts/make-alignment.sh \
-	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) U.fq.gz $(<D)/$* $(BOWTIE) | \
-	   cut -c 21- > $@.jid
-
-
-$(SAM_DIR)/%.sam : $(USAM) $(PSAM) 
-	sbatch \
-	-D $(ROOT_DIR) \
-	-J MAP-READS \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(BT2_RUN)/jobid.txt $(<D)/$*.jid) \
-	-o $(MAP_RUN)/$*.out \
-	-e $(MAP_RUN)/$*.err \
-	scripts/make-alignment.sh \
-	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) U.fq.gz $(<D)/$* $(BOWTIE) | \
-	   cut -c 21- > $@.jid 
-	# These may need to be merged after conversion to BAM
+	   $(addprefix $(IDX_DIR)/, $(PREFIX)) $(@D) U.fq.gz $(<D)/$* $(BOWTIE) \
+	   | cut -c 21- > $@.jid
 
 # Sorting and Converting to BAM files -----------------------------------------
 $(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(BAM_RUN)
@@ -277,19 +303,30 @@ $(BAM_DIR)/%_nsort.bam : $(SAM_DIR)/%.sam scripts/sam-to-bam.sh | $(BAM_DIR) $(B
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	-o $(BAM_RUN)/$*_nsort.out \
 	-e $(BAM_RUN)/$*_nsort.err \
-	scripts/sam-to-bam.sh $(<D) $(@D) $* $(SAMTOOLS) | \
-	   cut -c 21- > $@.jid
+	scripts/sam-to-bam.sh $(<D) $(@D) $* $(SAMTOOLS) \
+	   | cut -c 21- > $@.jid
+
+# Merging sorted BAM files
+$(BAM_DIR)/%_merged.bam : $(BAM_DIR)/%_P_nsort.bam scripts/merge-bam.sh $(UBAM) | $(MRG_RUN)
+	sbatch \
+	-D $(ROOT_DIR) \
+	-J MERGE \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*_P_nsort.jid $(<D)/$*_U_nsort.jid) \
+	-o $(MRG_RUN)/$*_merged.out \
+	-e $(MRG_RUN)/$*_merge.err \
+	scripts/merge-bam.sh $@ $(<D)/$* $(SAMTOOLS) \
+	   | cut -c 21- > $@.jid
 
 # Fix mate information and add the MD tag -------------------------------------
-$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_nsort.bam scripts/add-MD-tag.sh 
+$(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_merged.bam scripts/add-MD-tag.sh 
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J ADD-MD-TAG \
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	-o $(BAM_RUN)/$*_fixed.out \
 	-e $(BAM_RUN)/$*_fixed.err \
-	scripts/add-MD-tag.sh $< $(SAMTOOLS) $(REF_FNA) | \
-	   cut -c 21- > $@.jid
+	scripts/add-MD-tag.sh $< $(SAMTOOLS) $(REF_FNA) \
+	   | cut -c 21- > $@.jid
 
 # Marking optical duplicates with picard --------------------------------------
 $(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed.bam scripts/mark-duplicates.sh | $(MKD_RUN)
@@ -299,7 +336,8 @@ $(BAM_DIR)/%_dupmrk.bam : $(BAM_DIR)/%_fixed.bam scripts/mark-duplicates.sh | $(
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	-o $(MKD_RUN)/$*.out \
 	-e $(MKD_RUN)/$*.err \
-	scripts/mark-duplicates.sh $< $(SAMTOOLS) $(PICARD) | cut -c 21- > $@.jid
+	scripts/mark-duplicates.sh $< $(SAMTOOLS) $(PICARD) \
+	   | cut -c 21- > $@.jid
 
 # Make the GVCF files to use for variant calling later ------------------------
 $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX) | $(GVCF_DIR) $(GCF_RUN)
@@ -310,7 +348,8 @@ $(GVCF_DIR)/%.g.vcf.gz : $(BAM_DIR)/%_dupmrk.bam scripts/make-GVCF.sh $(REF_IDX)
 	-o $(GCF_RUN)/$*.out \
 	-e $(GCF_RUN)/$*.err \
 	scripts/make-GVCF.sh \
-	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) | cut -c 21- > $@.jid
+	   $< $@ $(gatk) $(ROOT_DIR)/$(REF_FNA) $(GATK) \
+	   | cut -c 21- > $@.jid
 
 # Call variants in separate windows and concatenate ---------------------------
 #
@@ -345,7 +384,8 @@ $(GVCF_DIR)/res.vcf.jid :
 	-o $(VCF_RUN)/cat-vcf.out \
 	-e $(VCF_RUN)/cat-vcf.err \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*jid) \
-	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) | cut -c 21- > $@
+	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) \
+	   | cut -c 21- > $@
 
 $(VCF) : $(CHR_JOBS)
 	printf '#!/usr/bin/env bash\nmake $(GVCF_DIR)/res.vcf.jid\n' > $(GVCF_DIR)/schedule.vcf.jid
@@ -355,7 +395,8 @@ $(VCF) : $(CHR_JOBS)
 	-o $(VCF_RUN)/schedule-vcf.out \
 	-e $(VCF_RUN)/schedule-vcf.err \
 	--hold \
-	$(GVCF_DIR)/schedule.vcf.jid | cut -c 21- > $(GVCF_DIR)/res.vcf.tmp.jid
+	$(GVCF_DIR)/schedule.vcf.jid \
+	   | cut -c 21- > $(GVCF_DIR)/res.vcf.tmp.jid
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J VCF \
