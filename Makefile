@@ -313,7 +313,7 @@ $(BAM_DIR)/%_merged.bam : $(BAM_DIR)/%_P_nsort.bam scripts/merge-bam.sh $(UBAM) 
 	-J MERGE \
 	--dependency=afterok:$$(bash scripts/get-job.sh $(<D)/$*_P_nsort.bam.jid $(<D)/$*_U_nsort.bam.jid) \
 	-o $(MRG_RUN)/$*_merged.out \
-	-e $(MRG_RUN)/$*_merge.err \
+	-e $(MRG_RUN)/$*_merged.err \
 	scripts/merge-bam.sh $@ $(<D)/$* $(SAMTOOLS) \
 	   | cut -c 21- > $@.jid
 
@@ -325,7 +325,7 @@ $(BAM_DIR)/%_fixed.bam : $(BAM_DIR)/%_merged.bam scripts/add-MD-tag.sh
 	--dependency=afterok:$$(bash scripts/get-job.sh $<.jid) \
 	-o $(BAM_RUN)/$*_fixed.out \
 	-e $(BAM_RUN)/$*_fixed.err \
-	scripts/add-MD-tag.sh $< $(SAMTOOLS) $(REF_FNA) \
+	scripts/add-MD-tag.sh $< $(SAMTOOLS) $(PICARD) $(REF_FNA) \
 	   | cut -c 21- > $@.jid
 
 # Marking optical duplicates with picard --------------------------------------

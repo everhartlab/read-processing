@@ -13,10 +13,11 @@
 
 if [ $# -lt 3 ]; then
 	echo
-	echo "Usage: add-MD-tag.sh <BAM> <SAMTOOLS> <REFERENCE>"
+	echo "Usage: add-MD-tag.sh <BAM> <SAMTOOLS> <PICARD> <REFERENCE>"
 	echo
 	echo "	<BAM>       - the directory for the samfiles"
 	echo "	<SAMTOOLS>  - the samtools module (e.g. samtools/1.3)"
+	echo "	<PICARD>    - the picard module (e.g. samtools/2.9)"
 	echo "	<REFERENCE> - The indexed reference genome in fasta format"
 	echo
 	exit
@@ -48,18 +49,20 @@ fi
 
 BAM=$1
 SAMTOOLS=$2
-REFERENCE=$3
+PICARD=$3
+REFERENCE=$4
 
 BAMTMP=$(sed 's/_merged\.bam/_csort_tmp/' <<< $BAM)
 BAMFIX=$(sed 's/merged/fixed/' <<< $BAM)
 
-CMD="samtools fixmate -O bam $BAM /dev/stdout \
-| samtools sort -O bam -o - -T $BAMTMP \
-| samtools calmd -b - $REFERENCE \
-> $BAMFIX"
+SORT="picard SortSam I=${BAM} O=${BAMTMP} SORT_ORDER=queryname"
+CMD="picard FixMateInformation I=${BAMTMP} O=/dev/stdout \ 
+| samtools calmd -b - ${REFERENCE} \
+> ${BAMFIX}"
 
 
-module load $SAMTOOLS
+module load ${SAMTOOLS}
+module load ${PICARD}
 
 # Run the command through time with memory and such reporting.
 # warning: there is an old bug in GNU time that overreports memory usage
@@ -71,9 +74,25 @@ echo "  Job: $SLURM_JOB_ID"
 echo
 echo "  Started on:           " `/bin/hostname -s`
 echo "  Started at:           " `/bin/date`
-echo $CMD
+echo ${SORT}
 
-eval $TIME$CMD # Running the command.
+eval ${TIME}${SORT} # sorting the reads.
+echo "  Validation:"
+picard ValidateSamFile I=${BAMTMP}
+
+echo
+echo "  Fix mates at:         " `/bin/date/`
+echo ${CMD}
+
+eval ${TIME}${CMD}  # fixing the mate information and adding the tag.
+TEST=$(picard ValidateSamFile I=${BAMFIX})
+echo ${TEST} 
+
+# Use validation check to remove temporary file.
+[ $(grep -c ERROR <<< ${TEST}) == 0 ] \
+&& rm ${BAMTMP} \
+&& echo "I detected no errors, so I have removed ${BAMTMP}" \
+|| echo "I detected an error in ${BAMFIX}, which may indicate an error in ${BAMTMP}"
 
 echo "  Finished at:           " `date`
 echo
