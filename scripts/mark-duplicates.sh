@@ -29,9 +29,12 @@ PICARD=$3
 BAMDUP=$(sed 's/_fixed\.bam/_dupmrk.bam/' <<< $BAM)
 METRICS=$(sed 's/_fixed\.bam/_marked_dup_metrics.txt/' <<< $BAM)
 
-CMD="picard MarkDuplicates I=$BAM O=$BAMDUP M=$METRICS "
-CMD=$CMD"MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000 "
-CMD=$CMD"ASSUME_SORTED=true"
+CMD="picard MarkDuplicates \
+I=$BAM \
+O=$BAMDUP \
+M=$METRICS \
+MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000 \
+ASSUME_SORTED=true"
 
 module load $SAMTOOLS
 module load $PICARD
@@ -49,6 +52,9 @@ echo "  Started at:           " `/bin/date`
 echo $CMD
 
 eval $TIME$CMD # Running the command.
+echo 
+echo "  Making index at:      " `/bin/date`
+echo "samtools index ${BAMDUP}"
 eval $TIME" samtools index $BAMDUP"
 
 echo "  Finished at:           " `date`
