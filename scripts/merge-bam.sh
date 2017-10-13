@@ -30,7 +30,7 @@ SAMTOOLS=$3
 
 PAIRED="${BASE}_P_nsort.bam"
 UNPAIRED="${BASE}_U_nsort.bam"
-CMD="samtools merge -c ${OUT} ${PAIRED} ${UNPAIRED}"
+CMD="samtools merge ${OUT} ${PAIRED} ${UNPAIRED}"
 
 module load ${SAMTOOLS}
 
