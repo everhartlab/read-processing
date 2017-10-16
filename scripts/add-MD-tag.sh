@@ -57,7 +57,7 @@ BAMTMP=$(sed 's/_merged\.bam/_csort_tmp/' <<< $BAM)
 BAMFIX=$(sed 's/merged/fixed/' <<< $BAM)
 
 SORT="picard SortSam I=${BAM} O=${BAMTMP} SORT_ORDER=coordinate"
-CMD="picard FixMateInformation I=${BAMTMP} O=/dev/stdout \ 
+CMD="picard FixMateInformation I=${BAMTMP} O=/dev/stdout \
 | samtools calmd -b - ${REFERENCE} \
 > ${BAMFIX}"
 

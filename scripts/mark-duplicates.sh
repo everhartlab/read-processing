@@ -55,7 +55,7 @@ eval $TIME$CMD # Running the command.
 echo 
 echo "  Making index at:      " `/bin/date`
 echo "samtools index ${BAMDUP}"
-eval $TIME" samtools index nthreads=4 $BAMDUP"
+eval $TIME" samtools index ${BAMDUP}"
 
 echo "  Finished at:           " `date`
 echo
