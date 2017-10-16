@@ -8,7 +8,8 @@
 #SBATCH --mem=4gb
 #
 # Request some processors
-#SBATCH --cpus-per-task=1
+# The picard documentation says that it will grab as many cores as is available.
+#SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
 
 if [ $# -lt 3 ]; then
@@ -55,7 +56,7 @@ REFERENCE=$4
 BAMTMP=$(sed 's/_merged\.bam/_csort_tmp/' <<< $BAM)
 BAMFIX=$(sed 's/merged/fixed/' <<< $BAM)
 
-SORT="picard SortSam I=${BAM} O=${BAMTMP} SORT_ORDER=queryname"
+SORT="picard SortSam I=${BAM} O=${BAMTMP} SORT_ORDER=coordinate"
 CMD="picard FixMateInformation I=${BAMTMP} O=/dev/stdout \ 
 | samtools calmd -b - ${REFERENCE} \
 > ${BAMFIX}"
@@ -81,7 +82,7 @@ echo "  Validation:"
 picard ValidateSamFile I=${BAMTMP}
 
 echo
-echo "  Fix mates at:         " `/bin/date/`
+echo "  Fix mates at:         " `/bin/date`
 echo ${CMD}
 
 eval ${TIME}${CMD}  # fixing the mate information and adding the tag.
@@ -94,6 +95,6 @@ echo ${TEST}
 && echo "I detected no errors, so I have removed ${BAMTMP}" \
 || echo "I detected an error in ${BAMFIX}, which may indicate an error in ${BAMTMP}"
 
-echo "  Finished at:           " `date`
+echo "  Finished at:           " `/bin/date`
 echo
 # End of file
