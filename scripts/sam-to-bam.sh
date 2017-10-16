@@ -5,7 +5,7 @@
 #
 #
 # Set memory requested and max memory
-#SBATCH --mem=4gb
+#SBATCH --mem=8gb
 #
 # Request some processors
 #SBATCH --cpus-per-task=1
