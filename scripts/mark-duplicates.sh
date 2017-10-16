@@ -8,7 +8,7 @@
 #SBATCH --mem=25gb
 #
 # Request some processors
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=4
 #SBATCH --ntasks=1
 
 if [ $# -lt 3 ]; then
@@ -55,7 +55,7 @@ eval $TIME$CMD # Running the command.
 echo 
 echo "  Making index at:      " `/bin/date`
 echo "samtools index ${BAMDUP}"
-eval $TIME" samtools index $BAMDUP"
+eval $TIME" samtools index nthreads=4 $BAMDUP"
 
 echo "  Finished at:           " `date`
 echo
