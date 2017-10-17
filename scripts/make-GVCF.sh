@@ -75,13 +75,13 @@ GATKVAR=$3
 REFERENCE=$4
 GATK=$5
 
-CMD="java -Djava.io.tmpdir=$TMPDIR -jar $GATKVAR "
-CMD=$CMD"-T HaplotypeCaller "
-CMD=$CMD"-R $REFERENCE "
-CMD=$CMD"--emitRefConfidence GVCF "
-CMD=$CMD"-ploidy 1 "
-CMD=$CMD"-I $BAM "
-CMD=$CMD"-o $GVCF"
+CMD="java -Djava.io.tmpdir=$TMPDIR -jar $GATKVAR \
+-T HaplotypeCaller \
+-R $REFERENCE \
+--emitRefConfidence GVCF \
+-ploidy 1 \
+-I $BAM \
+-o $GVCF"
 
 module load $GATK
 # Run the command through time with memory and such reporting.
