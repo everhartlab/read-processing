@@ -411,7 +411,7 @@ $(GVCF_DIR)/res.vcf.jid :
 	-J MAKE-VCF \
 	-o $(VCF_RUN)/cat-vcf.out \
 	-e $(VCF_RUN)/cat-vcf.err \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/res.[^v]*jid) \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*jid) \
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) \
 	   | cut -c 21- > $@
 
