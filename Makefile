@@ -377,13 +377,41 @@ $(CHR_JOBS) : $(GVCF) | $(INTERVALS) scripts/make-VCF.sh scripts/CAT-VCF.sh scri
 		scripts/chromosome-jobs.sh $(CHR_JOBS)/$$i.jobid | cut -c 21- > $(CHR_JOBS)/$$i.jid; \
 	done;
 
+# ---- Call variants in intervals within a given chromosome -------------------
+#
+#	This works by taking the chromosome name and getting all the intervals
+#	within the interval file. The error and out files will be the chromosome
+#	identifier with the range.
+#	The resulting vcf.gz file will be res.JOBID.vcf.gz
+#
+$(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
+	for i in $$(grep $* $(INTERVALS)); \
+	do \
+		suffix=$$(awk -F: '{print $$2}' <<< $$i); \
+		sbatch \
+		-D $(ROOT_DIR) \
+		-J $*-$$suffix \
+		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
+		-o $(VCF_RUN)/$*-$$suffix.out \
+		-e $(VCF_RUN)/$*-$$suffix.err \
+		scripts/make-VCF.sh \
+		   $(GVCF_DIR)/res \
+		   $(gatk) \
+		   $(ROOT_DIR)/$(REF_FNA) \
+		   $(GATK) \
+		   $$i \
+		   $(addprefix -V , $(GVCF)) \
+		   | cut -c 21- > $(GVCF_DIR)/res.$*-$$suffix.jid; \
+	done
+	cp $< $@
+
 $(GVCF_DIR)/res.vcf.jid :
 	sbatch \
 	-D $(ROOT_DIR) \
 	-J MAKE-VCF \
 	-o $(VCF_RUN)/cat-vcf.out \
 	-e $(VCF_RUN)/cat-vcf.err \
-	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/*jid) \
+	--dependency=afterok:$$(bash scripts/get-job.sh $(GVCF_DIR)/res.[^v]*jid) \
 	scripts/CAT-VCF.sh $(GVCF_DIR) $(VCFTOOLS) \
 	   | cut -c 21- > $@
 
@@ -405,30 +433,6 @@ $(VCF) : $(CHR_JOBS)
 	-e $(VCF_RUN)/release-vcf.err \
 	scripts/release-job.sh 10 $(GVCF_DIR)/res.vcf.tmp.jid
 	
-# ---- Call variants in intervals within a given chromosome -------------------
-#
-#	This works by taking the chromosome name and getting all the intervals
-#	within the interval file. The error and out files will be the chromosome
-#	identifier with the range.
-#	The resulting vcf.gz file will be res.JOBID.vcf.gz
-#
-$(CHR_JOBS)/%.jobid : $(CHR_JOBS)/%.jid
-	for i in $$(grep $* $(INTERVALS)); \
-	do \
-		suffix=$$(awk -F: '{print $$2}' <<< $$i); \
-		sbatch \
-		-D $(ROOT_DIR) \
-		-J $*-$$suffix \
-		--dependency=afterok:$$(bash scripts/get-job.sh $(addsuffix .jid, $(GVCF))) \
-		-o $(VCF_RUN)/$*-$$suffix.out \
-		-e $(VCF_RUN)/$*-$$suffix.err \
-		scripts/make-VCF.sh \
-		   $(GVCF_DIR)/res $(gatk) $(ROOT_DIR)/$(REF_FNA) \
-		   $(GATK) $$i $(addprefix -V , $(GVCF)) | \
-		   cut -c 21- > $(GVCF_DIR)/res.$*-$$suffix.jid; \
-	done
-	cp $< $@
-
 # DE-NOVO ALIGNMENT ===========================================================
 
 # Mapping the reads -----------------------------------------------------------
